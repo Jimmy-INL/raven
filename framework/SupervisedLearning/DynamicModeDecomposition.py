@@ -89,7 +89,8 @@ class DynamicModeDecomposition(supervisedLearning):
       @ Out, None
     """
     self.__dict__.update(state)
-    self.KDTreeFinder = spatial.KDTree(self.featureVals)
+    if self.amITrained:
+      self.KDTreeFinder = spatial.KDTree(self.featureVals)
 
   def _localNormalizeData(self,values,names,feat):
     """
