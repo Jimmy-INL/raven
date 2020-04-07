@@ -47,7 +47,8 @@ from ClassProperty import ClassProperty
 #display = True
 display = utils.displayAvailable()
 if not display:
-  matplotlib.use('Agg')
+  #matplotlib.use('Agg')
+  matplotlib.use('TkAgg')
 
 import matplotlib.pyplot as plt
 
@@ -731,6 +732,7 @@ class OutStreamPlot(OutStreamManager):
     if self.dim == 3:
       self.plt3D = self.fig.add_subplot(111, projection = '3d')
 
+    # Initialization TODO: Can this be done without a loop
     for pltIndex in range(len(self.options['plotSettings']['plot'])):
       self.colorMapCoordinates[pltIndex] = None
       if 'y' in self.options['plotSettings']['plot'][pltIndex].keys():
@@ -958,9 +960,6 @@ class OutStreamPlot(OutStreamManager):
             plt.subplot(self.gridSpace[x[0]:x[-1], y[0]:y[-1]])
           else:
             self.plt3D = plt.subplot(self.gridSpace[x[0]:x[-1], y[0]:y[-1]], projection = '3d')
-      elif self.dim == 3:
-        self.plt3D = plt.subplot(111, projection='3d')
-
       # calling "plt.hold" has been deprecated.
       # If the figure isn't cleared (or a new figure opened), it will keep adding plots.
       # This set of comments can be removed when "hold" has been demonstrated unneccessary.
@@ -1174,6 +1173,7 @@ class OutStreamPlot(OutStreamManager):
                     if 'color' not in scatterPlotOptions:
                       scatterPlotOptions['c'] = plotSettings['c']
                     self.actPlot = self.plt3D.scatter(self.xValues[pltIndex][key][xIndex], self.yValues[pltIndex][key][yIndex], self.zValues[pltIndex][key][zIndex], **scatterPlotOptions)
+                    plt.pause(0.01)
 
       #################
       #   LINE PLOT   #
@@ -1900,7 +1900,9 @@ class OutStreamPlot(OutStreamManager):
 
     # SHOW THE PICTURE
     self.__executeActions()
+    # self.fig.canvas.draw()
     plt.draw()
+    # plt.pause(0.01)
     # self.plt3D.draw(self.fig.canvas.renderer)
 
     if 'screen' in self.destinations and display:
