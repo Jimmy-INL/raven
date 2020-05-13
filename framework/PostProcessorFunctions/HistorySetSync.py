@@ -71,7 +71,7 @@ class HistorySetSync(PostProcessorInterfaceBase):
       elif child.tag == 'extension':
         self.extension = child.text
       elif child.tag == 'boundaries':
-        self.boundaries = child.text.split(",")
+        self.boundaries = [float(el) for el in child.text.split(",")]
         if len(self.boundaries) != 2:
           self.raiseAnError(IOError, 'HistorySetSync Interfaced Post-Processor ' + str(self.name) + ' : XML node ' + str(child) +
                             ' must containe a comma separated list (lenhgt 2) of floats (boundaries)')

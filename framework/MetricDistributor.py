@@ -166,7 +166,7 @@ class MetricDistributor(utils.metaclass_insert(abc.ABCMeta,BaseType),MessageHand
             for hist2 in range(targVals.shape[0]):
               dynOutput = self.estimator.evaluate(featVals[hist1, :], targVals[hist2, :], dataWeight[hist1]*dataWeight2[hist2])
               dynamicOutput.append(dynOutput)
-          dynamicOutput = np.atleast_2d(dynamicOutput) 
+          dynamicOutput = np.atleast_2d(dynamicOutput)
         else:
           dynamicOutput = self.estimator.evaluate(featVals, targVals, dataWeight)
       else:
@@ -176,7 +176,7 @@ class MetricDistributor(utils.metaclass_insert(abc.ABCMeta,BaseType),MessageHand
       if multiOutput == 'mean':
         output = [np.average(dynamicOutput, weights = weights)]
       elif multiOutput == 'average_time':
-        output = np.mean(np.atleast_2d(dynamicOutput) , axis=0) 
+        output = np.mean(np.atleast_2d(dynamicOutput) , axis=0)
       elif multiOutput == 'max':
         output = [np.amax(dynamicOutput)]
       elif multiOutput == 'min':
