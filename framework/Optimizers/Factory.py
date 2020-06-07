@@ -27,16 +27,16 @@ from .SimulatedAnnealing import SimulatedAnnealing
 from .GeneticAlgorithm import GeneticAlgorithm
 
 """
- Interface Dictionary (factory) (private)
+  Interface Dictionary (factory) (private)
 """
 # This machinery will automatically populate the "knownTypes" given the
 # imports defined above.
 __base = 'Optimizer'
 __interFaceDict = {}
 
-__interFaceDict['GradientDescent'           ] = GradientDescent
-__interFaceDict['SimulatedAnnealing'        ] = SimulatedAnnealing
-__interFaceDict['GeneticAlgorithm'          ] = GeneticAlgorithm
+__interFaceDict['GradientDescent'   ] = GradientDescent
+__interFaceDict['SimulatedAnnealing'] = SimulatedAnnealing
+__interFaceDict['GeneticAlgorithm']   = GeneticAlgorithm
 __knownTypes = list(__interFaceDict.keys())
 
 def knownTypes():

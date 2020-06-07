@@ -13,10 +13,11 @@
 # limitations under the License.
 """
   Genetic Algorithm class for global optimization.
-
-  Created May,13,2020
-  @author: Mohammad Abdo
-
+  This class contains the API and interface for performing
+  Genetic Algorithm-based optimizzation. Multiple strategies for
+  mutations, cross-overs, etc. are available.
+  Created June,3,2020
+  @authors: Mohammad Abdo, Diego Mandelli, Andrea Alfonsi
   References
     ----------
     .. [1]
@@ -86,11 +87,11 @@ class GeneticAlgorithm(RavenSampled):
     crossover = InputData.parameterInputFactory('crossover', strictMode=True,
         printPriority=108,
         descr=r"""a subnode containing the implemented crossover mechanisms.
-                  This includes: a.	One Point Crossover,
-                                 b.	MultiPoint Crossover,
-                                 c.	Uniform Crossover,
-                                 d.	Whole Arithmetic Recombination, or
-                                 e.	Davis’ Order Crossover.""")
+                  This includes: a.    One Point Crossover,
+                                 b.    MultiPoint Crossover,
+                                 c.    Uniform Crossover,
+                                 d.    Whole Arithmetic Recombination, or
+                                 e.    Davis’ Order Crossover.""")
     crossover.addParam("crossoverPoint", InputTypes.IntegerType, True)
     reproduction.addSub(crossover)
     # specs.addSub(crossover)
@@ -98,11 +99,11 @@ class GeneticAlgorithm(RavenSampled):
     mutation = InputData.parameterInputFactory('mutation', strictMode=True,
         printPriority=108,
         descr=r"""a subnode containing the implemented mutation mechanisms.
-                  This includes: a. Bit Flip,
-                                 b.	Random Resetting,
-                                 c.	Swap,
-                                 d.	Scramble, or
-                                 e.	Inversion.""")
+                  This includes: a.    Bit Flip,
+                                 b.    Random Resetting,
+                                 c.    Swap,
+                                 d.    Scramble, or
+                                 e.    Inversion.""")
     reproduction.addSub(mutation)
     # specs.addSub(mutation)
     specs.addSub(reproduction)
@@ -111,8 +112,8 @@ class GeneticAlgorithm(RavenSampled):
     survivorSelection = InputData.parameterInputFactory('survivorSelection', strictMode=True,
         printPriority=108,
         descr=r"""a subnode containing the implemented servivor selection mechanisms.
-                  This includes: a.	AgeBased, or
-                                 b. Fitness Based.""")
+                  This includes: a.    AgeBased, or
+                                 b.    Fitness Based.""")
     specs.addSub(survivorSelection)
 
     # convergence
