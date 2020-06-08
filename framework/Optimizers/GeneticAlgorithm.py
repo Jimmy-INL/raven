@@ -70,21 +70,34 @@ class GeneticAlgorithm(RavenSampled):
                             finding the global minima. More information can be found in:
                             Holland, John H. "Genetic algorithms." Scientific american 267.1 (1992): 66-73."""
 
+    # GA Params
+    GAparams = InputData.parameterInputFactory('GAparams', strictMode=True,
+        printPriority=108,
+        descr=r""" Genetic Algorithm Parameters.""")
+    specs.addSub(GAparams)
+    # Population Size
+    populationSize = InputData.parameterInputFactory('populationSize', strictMode=True,
+        contentType=InputTypes.IntegerType,
+        printPriority=108,
+        descr=r"""The number of chromosomes in each population.""")
+    GAparams.addSub(populationSize)
     # Parent Selection
     parentSelection = InputData.parameterInputFactory('parentSelection', strictMode=True,
+        contentType=InputTypes.StringType,
         printPriority=108,
         descr=r"""a node containing the criterion based on which the parents are selected. This can be a. a fitness proportionate selection such as Roulette Wheer, Stochastic Universal Sampling,
                   b. Tournament, c. Rank, or d. Random selection""")
-    specs.addSub(parentSelection)
+    GAparams.addSub(parentSelection)
     # Reproduction
     reproduction = InputData.parameterInputFactory('reproduction', strictMode=True,
         printPriority=108,
         descr=r"""a node containing the reproduction methods.
                   This accepts subnodes that specifies the types of crossover and mutation.""")
-    reproduction.addParam("Nrepl", InputTypes.IntegerType, True)
+    reproduction.addParam("nParents", InputTypes.IntegerType, True)
     # specs.addSub(reproduction)
     # 1.  Crossover
     crossover = InputData.parameterInputFactory('crossover', strictMode=True,
+        contentType=InputTypes.StringType,
         printPriority=108,
         descr=r"""a subnode containing the implemented crossover mechanisms.
                   This includes: a.    One Point Crossover,
@@ -97,6 +110,7 @@ class GeneticAlgorithm(RavenSampled):
     # specs.addSub(crossover)
     # 2.  Mutation
     mutation = InputData.parameterInputFactory('mutation', strictMode=True,
+        contentType=InputTypes.StringType,
         printPriority=108,
         descr=r"""a subnode containing the implemented mutation mechanisms.
                   This includes: a.    Bit Flip,
@@ -106,15 +120,16 @@ class GeneticAlgorithm(RavenSampled):
                                  e.    Inversion.""")
     reproduction.addSub(mutation)
     # specs.addSub(mutation)
-    specs.addSub(reproduction)
+    GAparams.addSub(reproduction)
 
     # Survivor Selection
     survivorSelection = InputData.parameterInputFactory('survivorSelection', strictMode=True,
+        contentType=InputTypes.StringType,
         printPriority=108,
         descr=r"""a subnode containing the implemented servivor selection mechanisms.
                   This includes: a.    AgeBased, or
                                  b.    Fitness Based.""")
-    specs.addSub(survivorSelection)
+    GAparams.addSub(survivorSelection)
 
     # convergence
     conv = InputData.parameterInputFactory('convergence', strictMode=True,
@@ -156,16 +171,13 @@ class GeneticAlgorithm(RavenSampled):
     """
     RavenSampled.handleInput(self, paramInput)
 
-    # Parent Selection
-    parentNode = paramInput.findFirst('parentSelection')
-    if parentNode is not None:
-      for sub in parentNode.subparts:
-        self._parentSelection = sub.value
-
-    # reproduction
-    reproductionNode = paramInput.findFirst('reproduction')
-    if reproductionNode is not None:
-      for sub in reproductionNode.subparts:
+    # GAparams
+    GAparamsNode = paramInput.findFirst('GAparams')
+    for sub in GAparamsNode.subparts:
+      if sub.name=='reproduction':
+        for subsub in sub.subparts:
+          setattr(self,str('_'+subsub.name),subsub.value)
+      else:
         setattr(self,str('_'+sub.name),sub.value)
 
     # Convergence Criterion
@@ -186,8 +198,6 @@ class GeneticAlgorithm(RavenSampled):
     if self._requiredPersistence is None:
       self.raiseADebug('No persistence given; setting to 1.')
       self._requiredPersistence = 1
-
-    #defaults
 
   def initialize(self, externalSeeding=None, solutionExport=None):
     """
