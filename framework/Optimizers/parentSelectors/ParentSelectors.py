@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-  Mutation methods base class
+  Parent selection methods base class
   Created May,13,2020
-  @author: Mohammad Abdo
+  @authors: Mohammad Abdo, Diego Mandelli, Andrea Alfonsi
 """
 import abc
 import numpy as np
@@ -25,7 +25,7 @@ class ParentSelectors(utils.metaclass_insert(abc.ABCMeta, object)):
     ParentSelectors control the parent selection process via several
     implemented mechanisms. Currently, the parent selection options include:
 
-    1.
+    1. Roulette Selection
   """
   ##########################
   # Initialization Methods #
@@ -81,7 +81,7 @@ class ParentSelectors(utils.metaclass_insert(abc.ABCMeta, object)):
     """
     pass
 
-  def _rouletteSelection(population, fitnesses):
+  def _rouletteSelection(self, population, fitnesses):
     """
       Roulette Selection mechanism for parent selection
       @ In, population, array, population is a pool of chromosomes (individuals), i.e., np.shape(population) = population size x nGenes

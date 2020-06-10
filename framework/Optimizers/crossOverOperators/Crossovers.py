@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """
-  Mutation methods base class
+  Crossover methods base class
   Created May,13,2020
-  @author: Mohammad Abdo
+  @authors: Mohammad Abdo, Diego Mandelli, Andrea Alfonsi
 """
 import abc
 import numpy as np

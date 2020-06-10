@@ -14,7 +14,7 @@
 """
   Mutation methods base class
   Created May,13,2020
-  @author: Mohammad Abdo
+  @author: Mohammad Abdo, Diego Mendelli, Andrea Alfonsi
 """
 import abc
 
