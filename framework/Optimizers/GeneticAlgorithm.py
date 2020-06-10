@@ -219,7 +219,8 @@ class GeneticAlgorithm(RavenSampled):
       Used to feedback the collected runs into actionable items within the sampler.
       This is called by localFinalizeActualSampling, and hence should contain the main skeleton.
       @ In, info, dict, identifying information about the realization
-      @ In, rlz, dict, realized realization
+      @ In, rlz, dict, realized realization, In case of bath handling rlz is a dictionary of
+            dictionaries representing the population with the corresponding evaluations.
       @ In, optVal, float, value of objective variable (corrected for min/max)
       @ Out, None
     """
