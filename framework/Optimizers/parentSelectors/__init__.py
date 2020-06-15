@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-  parentSelector is a tool for the Genetic Algorithm Optimizer.
+  ParentSelector is a tool for the Genetic Algorithm Optimizer.
 """
 
 from __future__ import absolute_import
@@ -21,12 +21,12 @@ from __future__ import absolute_import
 # 'from Optimizers.Optimizer import Sampler' outside of this submodule
 
 # TODO
-from . import parentSelectors
+from . import ParentSelectors
 from .RouletteWheel import RouletteWheel
-from .SUS import SUS
-from .Tournament import Tournament
-from .Rank import Rank
-from .Random import Random
+# from .SUS import SUS
+# from .Tournament import Tournament
+# from .Rank import Rank
+# from .Random import Random
 
 from .Factory import knownTypes
 from .Factory import returnInstance

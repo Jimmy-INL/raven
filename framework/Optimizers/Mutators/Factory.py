@@ -21,21 +21,21 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 
 ################################################################################
 from . import Mutators
-from .BitFlip import BitFlip
-from .RandomResetting import RandomResetting
-from .Swap import Swap
-from .Scramble import Scramble
-from .Inversion import Inversion
+# from .BitFlip import BitFlip
+# from .RandomResetting import RandomResetting
+# from .Swap import Swap
+# from .Scramble import Scramble
+# from .Inversion import Inversion
 
 # This machinery will automatically populate the "knownTypes" given the
 # imports defined above.
 __base = 'Optimizer'
 __interFaceDict = {}
-__interFaceDict['BitFlip'] = BitFlip
-__interFaceDict['RandomResetting'] = RandomResetting
-__interFaceDict['Swap'] = Swap
-__interFaceDict['Scramble'] = Scramble
-__interFaceDict['Inversion'] = Inversion
+# __interFaceDict['BitFlip'] = BitFlip
+# __interFaceDict['RandomResetting'] = RandomResetting
+# __interFaceDict['Swap'] = Swap
+# __interFaceDict['Scramble'] = Scramble
+# __interFaceDict['Inversion'] = Inversion
 
 __knownTypes = list(__interFaceDict.keys())
 

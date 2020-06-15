@@ -22,11 +22,11 @@ from __future__ import absolute_import
 
 # TODO
 from . import Mutators
-from .BitFlip import BitFlip
-from .RandomResetting import RandomResetting
-from .Swap import Swap
-from .Scramble import Scramble
-from .Inversion import Inversion
+# from .BitFlip import BitFlip
+# from .RandomResetting import RandomResetting
+# from .Swap import Swap
+# from .Scramble import Scramble
+# from .Inversion import Inversion
 
 from .Factory import knownTypes
 from .Factory import returnInstance

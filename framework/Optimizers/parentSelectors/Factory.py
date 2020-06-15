@@ -18,12 +18,12 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 #End compatibility block for Python 3-------------------------------------------
 
 ################################################################################
-from . import parentSelectors
+from . import ParentSelectors
 from .RouletteWheel import RouletteWheel
-from .SUS import SUS
-from .Tournament import Tournament
-from .Rank import Rank
-from .Random import Random
+# from .SUS import SUS
+# from .Tournament import Tournament
+# from .Rank import Rank
+# from .Random import Random
 """
   Interface Dictionary (factory) (private)
 """
@@ -31,12 +31,11 @@ from .Random import Random
 # imports defined above.
 __base = 'Optimizer'
 __interFaceDict = {}
-__interFaceDict['parentSelectors'] = parentSelectors
 __interFaceDict['RouletteWheel'] = RouletteWheel
-__interFaceDict['SUS'] = SUS
-__interFaceDict['Tournament'] = Tournament
-__interFaceDict['Rank'] = Rank
-__interFaceDict['Random'] = Random
+# __interFaceDict['SUS'] = SUS
+# __interFaceDict['Tournament'] = Tournament
+# __interFaceDict['Rank'] = Rank
+# __interFaceDict['Random'] = Random
 
 __knownTypes = list(__interFaceDict.keys())
 

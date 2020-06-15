@@ -15,27 +15,24 @@
 """
   Interface Dictionary (factory) (private)
 """
+
 #for future compatibility with Python 3-----------------------------------------
 from __future__ import division, print_function, unicode_literals, absolute_import
 #End compatibility block for Python 3-------------------------------------------
 
 ################################################################################
-from . import Crossovers
-# from .OnePoint import OnePoint
-# from .MultiPoint import MultiPoint
-# from .Uniform import Uniform
-# from .Recombination import Recombination
-# from .Davis import Davis
+from . import SurvivorSelectors
+from . import AgeBased
+from . import FitnessBased
 
 # This machinery will automatically populate the "knownTypes" given the
 # imports defined above.
 __base = 'Optimizer'
 __interFaceDict = {}
-# __interFaceDict['OnePoint'] = OnePoint
-# __interFaceDict['MultiPoint'] = MultiPoint
-# __interFaceDict['Uniform'] = Uniform
-# __interFaceDict['Recombination'] = Recombination
-# __interFaceDict['Davis'] = Davis
+__interFaceDict['SurvivorSelectors'] = SurvivorSelectors
+__interFaceDict['AgeBased'] = AgeBased
+__interFaceDict['FitnessBased'] = FitnessBased
+
 __knownTypes = list(__interFaceDict.keys())
 
 def knownTypes():

@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-  Crossovers class is a tool for the Genetic Algorithm Optimizer.
+  SurvivorSelector is a tool for the Genetic Algorithm Optimizer.
 """
 
 from __future__ import absolute_import
 
-# These lines ensure that we do not have to do something like:
-# 'from Optimizers.Optimizer import Sampler' outside of this submodule
 
 # TODO
-from . import Crossovers
-# from .OnePoint import OnePoint
-# from .MultiPoint import MultiPoint
-# from .Uniform import Uniform
-# from .Recombination import Recombination
-# from .Davis import Davis
+from . import SurvivorSelectors
+from . import AgeBased
+from . import FitnessBased
 
 from .Factory import knownTypes
 from .Factory import returnInstance

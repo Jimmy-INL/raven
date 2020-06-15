@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-  Parent selection methods base class
+  Survivor selection methods base class
   Created May,13,2020
   @authors: Mohammad Abdo, Diego Mandelli, Andrea Alfonsi
 """
 import abc
-import numpy as np
-from utils import utils, randomUtils, InputData, InputTypes
 
-class ParentSelectors(utils.metaclass_insert(abc.ABCMeta, object)):
+from utils import utils, InputData, InputTypes
+
+class SurvivorSelectors(utils.metaclass_insert(abc.ABCMeta, object)):
   """
-    ParentSelectors control the parent selection process via several
-    implemented mechanisms. Currently, the parent selection options include:
+    SurvivorSelectors control the survivor selection process via several
+    implemented mechanisms. Currently, the survivor selection options include:
 
-    1. Roulette Selection
+    1.
   """
   ##########################
   # Initialization Methods #
@@ -73,41 +73,11 @@ class ParentSelectors(utils.metaclass_insert(abc.ABCMeta, object)):
     """
     pass
 
-  def initialize(self):
+  def initialize(self, optVars, proximity):
     """
       After construction, finishes initialization of this approximator.
-      @ In,
+      @ In, optVars, list(str), list of optimization variable names
+      @ In, proximity, float, percentage of step size away that neighbor samples should be taken
       @ Out, None
     """
     pass
-
-  @abc.abstractmethod
-  def Select(self, population, fitness):
-    """
-      Selects parents based on parent seletion mechanism.
-      @ In, population, ndarray, all chromosomes candidate to be parents, i.e. np.shape(population) = populationSize x nGenes.
-      @ In, fitness, 1darray, fitness of each chromosome, i.e., len(fitness) = populationSize
-      @ Out, parents,ndarray, selected parents, i.e. np.shape(parents) = nParents x nGenes.
-    """
-  # def rouletteSelection(self, population, fitnesses):
-  #   """
-  #     Roulette Selection mechanism for parent selection
-  #     @ In, population, array, population is a pool of chromosomes (individuals), i.e., np.shape(population) = population size x nGenes
-  #     @ In, fitnesses, a list or a 1D array, fitness of each chromosome in the population
-  #     @ Out, selectedParent, a list or a 1D array, selected Parent
-  #   """
-  #   selectionProb = fitnesses/np.sum(fitnesses)
-  #   # imagine a wheel that is partitioned according to the selection
-  #   # probabilities
-
-  #   # set a random pointer
-  #   roulettePointer = randomUtils.random(dim=1, samples=1)
-  #   # Rotate the wheel
-  #   counter = 0
-  #   # intialize Probability
-  #   sumProb = selectionProb[counter]
-  #   while sumProb < roulettePointer:
-  #     counter += 1
-  #     sumProb += selectionProb[counter]
-  #   selectedParent = population[counter]
-  #   return selectedParent

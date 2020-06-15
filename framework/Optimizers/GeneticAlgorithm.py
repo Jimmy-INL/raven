@@ -30,6 +30,22 @@ from collections import deque, defaultdict
 #Internal Modules------------------------------------------------------------------------------------
 from utils import mathUtils, randomUtils, InputData, InputTypes
 from .RavenSampled import RavenSampled
+# Parent Selectors
+from .parentSelectors import knownTypes as parentSelectorsKnownTypes
+from .parentSelectors import returnInstance as parentSelectorsReturnInstance
+from .parentSelectors import returnClass as parentSelectorsReturnClass
+# Cross Overs
+from .crossOverOperators import knownTypes as crossOversKnownTypes
+from .crossOverOperators import returnInstance as crossOversReturnInstance
+from .crossOverOperators import returnClass as crossOversReturnClass
+# Mutators
+from .mutators import knownTypes as mutatorsKnownTypes
+from .mutators import returnInstance as mutatorsReturnInstance
+from .mutators import returnClass as mutatorsReturnClass
+# Survivor Selectors
+from .survivorSelector import knownTypes as survivorSelectorsKnownTypes
+from .survivorSelector import returnInstance as survivorSelectorsReturnInstance
+from .survivorSelector import returnClass as survivorSelectorsReturnClass
 #Internal Modules End--------------------------------------------------------------------------------
 
 class GeneticAlgorithm(RavenSampled):
@@ -52,6 +68,7 @@ class GeneticAlgorithm(RavenSampled):
     self._acceptRerun = {}                                      # by traj, if True then override accept for point rerun
     self._convergenceInfo = {}                                   # by traj, the persistence and convergence information for most recent opt
     self._requiredPersistence = 0                                # consecutive persistence required to mark convergence
+    self.needDenormalized()
 
   ##########################
   # Initialization Methods #
@@ -88,6 +105,11 @@ class GeneticAlgorithm(RavenSampled):
         descr=r"""a node containing the criterion based on which the parents are selected. This can be a. a fitness proportionate selection such as Roulette Wheer, Stochastic Universal Sampling,
                   b. Tournament, c. Rank, or d. Random selection""")
     GAparams.addSub(parentSelection)
+    ## get specs for each ParentSelection subclass, and add them to this class's options
+    for selector in parentSelectorsKnownTypes():
+      subSpecs = parentSelectorsReturnClass(selector, cls).getInputSpecification()
+      GAparams.addSub(subSpecs)
+
     # Reproduction
     reproduction = InputData.parameterInputFactory('reproduction', strictMode=True,
         printPriority=108,
@@ -106,6 +128,10 @@ class GeneticAlgorithm(RavenSampled):
                                  d.    Whole Arithmetic Recombination, or
                                  e.    Davis’ Order Crossover.""")
     crossover.addParam("crossoverPoint", InputTypes.IntegerType, True)
+    ## get specs for each crossover subclass, and add them to this class's options
+    for crossover in crossOversKnownTypes():
+      subSpecs = crossOversReturnClass(crossover, cls).getInputSpecification()
+      crossover.addSub(subSpecs)
     reproduction.addSub(crossover)
     # specs.addSub(crossover)
     # 2.  Mutation
@@ -118,6 +144,10 @@ class GeneticAlgorithm(RavenSampled):
                                  c.    Swap,
                                  d.    Scramble, or
                                  e.    Inversion.""")
+    ## get specs for each mutator subclass, and add them to this class's options
+    for mutator in mutatorsKnownTypes():
+      subSpecs = mutatorsReturnClass(mutator, cls).getInputSpecification()
+      mutation.addSub(subSpecs)
     reproduction.addSub(mutation)
     # specs.addSub(mutation)
     GAparams.addSub(reproduction)
@@ -129,6 +159,10 @@ class GeneticAlgorithm(RavenSampled):
         descr=r"""a subnode containing the implemented servivor selection mechanisms.
                   This includes: a.    AgeBased, or
                                  b.    Fitness Based.""")
+    ## get specs for each survivorSelector subclass, and add them to this class's options
+    for survivor in survivorSelectorsKnownTypes():
+      subSpecs = survivorSelectorsReturnClass(survivor, cls).getInputSpecification()
+      survivorSelection.addSub(subSpecs)
     GAparams.addSub(survivorSelection)
 
     # convergence
@@ -177,8 +211,10 @@ class GeneticAlgorithm(RavenSampled):
       if sub.name=='reproduction':
         for subsub in sub.subparts:
           setattr(self,str('_'+subsub.name),subsub.value)
+          # setattr(self,str('_'+subsub.name+'Instance'),subsub.name+'ReturnInstance(self,'+)
       else:
         setattr(self,str('_'+sub.name),sub.value)
+      # self._parentSelectionInstance =
 
     # Convergence Criterion
     convNode = paramInput.findFirst('convergence')
@@ -229,7 +265,25 @@ class GeneticAlgorithm(RavenSampled):
     info['optVal'] = rlz[self._objectiveVar]
     self.incrementIteration(traj)
     info['step'] = self.counter
-    #
+
+    # separate population from model evaluations
+    population = np.zeros((self._populationSize,len(self.toBeSampled)))
+    fitness = np.zeros(len(self.toBeSampled))
+    fitness = rlz[self._objectiveVar]*np.random.random(self._populationSize) # All np.random should be replaced with randomUtils.random etc.
+    chromosome = rlz.copy()
+    chromosome.pop(self._objectiveVar)
+    chromosome = list(chromosome.values())
+    for i in range(self._populationSize):
+      population[i] = np.random.choice(chromosome,size=len(self.toBeSampled),replace=False)
+
+    # Select Parents
+    parentSelectorsKnownTypes()
+    # reproduce
+
+    # crossover
+
+    # Mutation
+
 
   def _submitRun(self, point, traj, step, moreInfo=None):
     """
@@ -329,3 +383,11 @@ class GeneticAlgorithm(RavenSampled):
   #     @ Out, None
   #   """
   #   pass
+  def needDenormalized(self):
+    """
+      Determines if the currently used algorithms should be normalizing the input space or not
+      @ In, None
+      @ Out, needDenormalized, bool, True if normalizing should NOT be performed
+    """
+    # overload as needed in inheritors
+    return True
