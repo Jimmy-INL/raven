@@ -49,6 +49,7 @@ class RandomMutation(Mutators):
         if all(v in [0,1] for v in chromosome):
           chromosome[i] = not chromosome[i]
         else:
+          # chromosome[i] = CALL THE DISTRIBUTION USING AN ASSEMBLER
           pass
     return chromosome
 
