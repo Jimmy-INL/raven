@@ -21,15 +21,14 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 #End compatibility block for Python 3-------------------------------------------
 
 ################################################################################
-from . import SurvivorSelectors
-from . import AgeBased
-from . import FitnessBased
+from .SurvivorSelectors import SurvivorSelectors
+from .AgeBased import AgeBased
+from .FitnessBased import FitnessBased
 
 # This machinery will automatically populate the "knownTypes" given the
 # imports defined above.
 __base = 'Optimizer'
 __interFaceDict = {}
-__interFaceDict['SurvivorSelectors'] = SurvivorSelectors
 __interFaceDict['AgeBased'] = AgeBased
 __interFaceDict['FitnessBased'] = FitnessBased
 

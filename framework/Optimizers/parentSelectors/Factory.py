@@ -18,7 +18,7 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 #End compatibility block for Python 3-------------------------------------------
 
 ################################################################################
-from . import ParentSelectors
+from .ParentSelectors import ParentSelectors
 from .RouletteWheel import RouletteWheel
 # from .SUS import SUS
 # from .Tournament import Tournament

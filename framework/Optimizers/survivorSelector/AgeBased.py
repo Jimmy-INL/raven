@@ -16,7 +16,7 @@
 """
 import numpy as np
 from utils import InputData, InputTypes, randomUtils, mathUtils
-from . import SurvivorSelectors
+from .SurvivorSelectors import SurvivorSelectors
 
 class AgeBased(SurvivorSelectors):
   """

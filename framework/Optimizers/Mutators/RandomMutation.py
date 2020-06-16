@@ -39,14 +39,17 @@ class RandomMutation(Mutators):
   ###############
   # Run Methods #
   ###############
-def binary_random_mutation(chromosome, mutationProb) :
-  """
-    @ In,
-    @ Out,
-  """
-  for i in range(len(chromosome)):
-    if np.random.random() < mutationProb :
-      chromosome[i] = not chromosome[i]
+  def Mutate(self, chromosome, mutationProb) :
+    """
+      @ In,
+      @ Out,
+    """
+    for i in range(len(chromosome)):
+      if randomUtils.random(dim=1,samples=1) < mutationProb :
+        if all(v in [0,1] for v in chromosome):
+          chromosome[i] = not chromosome[i]
+        else:
+          pass
     return chromosome
 
   ###################

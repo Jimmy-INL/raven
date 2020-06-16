@@ -17,7 +17,6 @@
   @authors: Mohammad Abdo, Diego Mandelli, Andrea Alfonsi
 """
 import abc
-
 from utils import utils, InputData, InputTypes
 
 class SurvivorSelectors(utils.metaclass_insert(abc.ABCMeta, object)):
@@ -69,15 +68,6 @@ class SurvivorSelectors(utils.metaclass_insert(abc.ABCMeta, object)):
     """
       Read input specs
       @ In, specs, InputData.ParameterInput, parameter specs interpreted
-      @ Out, None
-    """
-    pass
-
-  def initialize(self, optVars, proximity):
-    """
-      After construction, finishes initialization of this approximator.
-      @ In, optVars, list(str), list of optimization variable names
-      @ In, proximity, float, percentage of step size away that neighbor samples should be taken
       @ Out, None
     """
     pass

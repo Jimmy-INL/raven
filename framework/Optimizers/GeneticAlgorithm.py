@@ -31,21 +31,21 @@ from collections import deque, defaultdict
 from utils import mathUtils, randomUtils, InputData, InputTypes
 from .RavenSampled import RavenSampled
 # Parent Selectors
-from .parentSelectors import knownTypes as parentSelectorsKnownTypes
-from .parentSelectors import returnInstance as parentSelectorsReturnInstance
-from .parentSelectors import returnClass as parentSelectorsReturnClass
+from .parentSelectors import knownTypes as parentSelectionKnownType
+from .parentSelectors import returnInstance as parentSelectionReturnInstance
+from .parentSelectors import returnClass as parentSelectionReturnClass
 # Cross Overs
-from .crossOverOperators import knownTypes as crossOversKnownTypes
-from .crossOverOperators import returnInstance as crossOversReturnInstance
-from .crossOverOperators import returnClass as crossOversReturnClass
+from .crossOverOperators import knownTypes as crossoverKnownType
+from .crossOverOperators import returnInstance as crossoverReturnInstance
+from .crossOverOperators import returnClass as crossoverReturnClass
 # Mutators
-from .mutators import knownTypes as mutatorsKnownTypes
-from .mutators import returnInstance as mutatorsReturnInstance
-from .mutators import returnClass as mutatorsReturnClass
+from .mutators import knownTypes as mutationKnownType
+from .mutators import returnInstance as mutationReturnInstance
+from .mutators import returnClass as mutationReturnClass
 # Survivor Selectors
-from .survivorSelector import knownTypes as survivorSelectorsKnownTypes
-from .survivorSelector import returnInstance as survivorSelectorsReturnInstance
-from .survivorSelector import returnClass as survivorSelectorsReturnClass
+from .survivorSelector import knownTypes as survivorSelectionKnownTypes
+from .survivorSelector import returnInstance as survivorSelectionReturnInstance
+from .survivorSelector import returnClass as survivorSelectionReturnClass
 #Internal Modules End--------------------------------------------------------------------------------
 
 class GeneticAlgorithm(RavenSampled):
@@ -106,8 +106,8 @@ class GeneticAlgorithm(RavenSampled):
                   b. Tournament, c. Rank, or d. Random selection""")
     GAparams.addSub(parentSelection)
     ## get specs for each ParentSelection subclass, and add them to this class's options
-    for selector in parentSelectorsKnownTypes():
-      subSpecs = parentSelectorsReturnClass(selector, cls).getInputSpecification()
+    for selector in parentSelectionKnownType():
+      subSpecs = parentSelectionReturnClass(selector, cls).getInputSpecification()
       GAparams.addSub(subSpecs)
 
     # Reproduction
@@ -128,9 +128,9 @@ class GeneticAlgorithm(RavenSampled):
                                  d.    Whole Arithmetic Recombination, or
                                  e.    Davis’ Order Crossover.""")
     crossover.addParam("crossoverPoint", InputTypes.IntegerType, True)
-    ## get specs for each crossover subclass, and add them to this class's options
-    for crossover in crossOversKnownTypes():
-      subSpecs = crossOversReturnClass(crossover, cls).getInputSpecification()
+    # get specs for each crossover subclass, and add them to this class's options
+    for crossoverType in crossoverKnownType():
+      subSpecs = crossoverReturnClass(crossoverType, cls).getInputSpecification()
       crossover.addSub(subSpecs)
     reproduction.addSub(crossover)
     # specs.addSub(crossover)
@@ -144,9 +144,9 @@ class GeneticAlgorithm(RavenSampled):
                                  c.    Swap,
                                  d.    Scramble, or
                                  e.    Inversion.""")
-    ## get specs for each mutator subclass, and add them to this class's options
-    for mutator in mutatorsKnownTypes():
-      subSpecs = mutatorsReturnClass(mutator, cls).getInputSpecification()
+    # get specs for each mutator subclass, and add them to this class's options
+    for mutator in mutationKnownType():
+      subSpecs = mutationReturnClass(mutator, cls).getInputSpecification()
       mutation.addSub(subSpecs)
     reproduction.addSub(mutation)
     # specs.addSub(mutation)
@@ -159,9 +159,9 @@ class GeneticAlgorithm(RavenSampled):
         descr=r"""a subnode containing the implemented servivor selection mechanisms.
                   This includes: a.    AgeBased, or
                                  b.    Fitness Based.""")
-    ## get specs for each survivorSelector subclass, and add them to this class's options
-    for survivor in survivorSelectorsKnownTypes():
-      subSpecs = survivorSelectorsReturnClass(survivor, cls).getInputSpecification()
+    # get specs for each survivorSelector subclass, and add them to this class's options
+    for survivor in survivorSelectionKnownTypes():
+      subSpecs = survivorSelectionReturnClass(survivor, cls).getInputSpecification()
       survivorSelection.addSub(subSpecs)
     GAparams.addSub(survivorSelection)
 
@@ -208,12 +208,22 @@ class GeneticAlgorithm(RavenSampled):
     # GAparams
     GAparamsNode = paramInput.findFirst('GAparams')
     for sub in GAparamsNode.subparts:
-      if sub.name=='reproduction':
+      if sub.name == 'populationSize':
+        setattr(self,str('_'+sub.name),sub.value)
+      elif sub.name=='reproduction':
+        setattr(self,str('_'+list(sub.parameterValues.keys())[0]),list(sub.parameterValues.values())[0])
         for subsub in sub.subparts:
+          if subsub.parameterValues:
+            setattr(self,str('_'+list(subsub.parameterValues.keys())[0]),list(subsub.parameterValues.values())[0])
           setattr(self,str('_'+subsub.name),subsub.value)
+          setattr(self,str('_'+subsub.name+'Instance'),
+                eval(str(subsub.name+'ReturnInstance(subsub.value, self)')))
           # setattr(self,str('_'+subsub.name+'Instance'),subsub.name+'ReturnInstance(self,'+)
       else:
+        # name = sub.name.replace('ion','ors')
         setattr(self,str('_'+sub.name),sub.value)
+        setattr(self,str('_'+sub.name+'Instance'),
+                eval(str(sub.name+'ReturnInstance(sub.value, self)')))
       # self._parentSelectionInstance =
 
     # Convergence Criterion
@@ -267,6 +277,8 @@ class GeneticAlgorithm(RavenSampled):
     info['step'] = self.counter
 
     # separate population from model evaluations
+    # This part is just a dumb emulation of what should be passed by the job handeler batch
+    # This part will totally be removed later.
     population = np.zeros((self._populationSize,len(self.toBeSampled)))
     fitness = np.zeros(len(self.toBeSampled))
     fitness = rlz[self._objectiveVar]*np.random.random(self._populationSize) # All np.random should be replaced with randomUtils.random etc.
@@ -277,13 +289,16 @@ class GeneticAlgorithm(RavenSampled):
       population[i] = np.random.choice(chromosome,size=len(self.toBeSampled),replace=False)
 
     # Select Parents
-    parentSelectorsKnownTypes()
+    # initialize parents
+    parents = np.zeros((self._nParents,len(self.toBeSampled)))
+    for i in range(self._nParents):
+      ind, parents[i] = self._parentSelectionInstance.Select(population,fitness)
+      population = np.delete(population, ind, axis=0)
     # reproduce
-
     # crossover
-
+    children = self._crossoverInstance.Cross(parents,0.9,3)
     # Mutation
-
+    children = self._mutationInstance.Mutate(children[0,:],0.3)
 
   def _submitRun(self, point, traj, step, moreInfo=None):
     """

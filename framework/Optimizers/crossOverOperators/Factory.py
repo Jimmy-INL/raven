@@ -20,8 +20,8 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 #End compatibility block for Python 3-------------------------------------------
 
 ################################################################################
-from . import Crossovers
-# from .OnePoint import OnePoint
+from .Crossovers import Crossovers
+from .OnePoint import OnePoint
 # from .MultiPoint import MultiPoint
 # from .Uniform import Uniform
 # from .Recombination import Recombination
@@ -31,7 +31,7 @@ from . import Crossovers
 # imports defined above.
 __base = 'Optimizer'
 __interFaceDict = {}
-# __interFaceDict['OnePoint'] = OnePoint
+__interFaceDict['OnePoint'] = OnePoint
 # __interFaceDict['MultiPoint'] = MultiPoint
 # __interFaceDict['Uniform'] = Uniform
 # __interFaceDict['Recombination'] = Recombination

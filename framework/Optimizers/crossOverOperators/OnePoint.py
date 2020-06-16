@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-  Implementation of Roulette Selector for parent selection of Genetic Algorithm
+  Implementation of One Point Crossover for children crossover in Genetic Algorithm
 """
 import numpy as np
+from copy import deepcopy
 from utils import InputData, InputTypes, randomUtils, mathUtils
-from .ParentSelectors import ParentSelectors
+from . import Crossovers
 
 class OnePoint(Crossovers):
   """
@@ -39,17 +40,16 @@ class OnePoint(Crossovers):
   ###############
   # Run Methods #
   ###############
-  def onePoint(self,parent1,parent2,crossoverProb,point):
+  def Cross(self,parents,crossoverProb,point):
     """
       One Point crossover.
-      @ In, parent1, 1D array, parent1 in the current mating process. Shape is 1 x len(chromosome) i.e, number of Genes/Vars
-      @ In, parent2, 1D array, parent2 in the current mating process. Shape is 1 x len(chromosome) i.e, number of Genes/Vars
+      @ In, parents, 2D array, parents in the current mating process. Shape is nParents x len(chromosome) i.e, number of Genes/Vars
       @ In, crossoverProb, float, crossoverProb determines when child takes genes from a specific parent, default is random
       @ In, point, integer, point at which the cross over happens, default is random
-      @ Out, child1, 1D array, child1 resulting from the crossover. Shape is 1 x len(chromosome) i.e, number of Genes/Vars
-      @ Out, child2, 1D array, child2 resulting from the crossover. Shape is 1 x len(chromosome) i.e, number of Genes/Vars
+      @ Out, children, 2D array, children resulting from the crossover. Shape is nParents x len(chromosome) i.e, number of Genes/Vars
     """
-    nGenes = np.shape(parent1)[1]
+    nParents,nGenes = np.shape(parents)
+    children = np.zeros((np.shape(parents)))
     # defaults
     if point is None:
       point = randomUtils.randomIntegers(1,nGenes-1)
@@ -62,16 +62,14 @@ class OnePoint(Crossovers):
 
       for i in range(nGenes):
         if i<point:
-          child1[1,i]=parent1[1,i]
-          child2[1,i]=parent2[1,i]
+          children[:,i]=parents[:,i]
         else:
-          child1[1,i]=parent2[1,i]
-          child2[1,i]=parent1[1,i]
+          for j in range(np.shape(parents)[0]):
+            children[j,i]=parents[np.shape(parents)[0]-j-1,i]
     else:
       # Each child is just a copy of the parents
-      child1 = deepcopy(parent1)
-      child2 = deepcopy(parent2)
-    return child1,child2
+      children = deepcopy(parents)
+    return children
 
 
   ###################

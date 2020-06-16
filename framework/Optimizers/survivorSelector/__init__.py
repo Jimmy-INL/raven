@@ -19,9 +19,9 @@ from __future__ import absolute_import
 
 
 # TODO
-from . import SurvivorSelectors
-from . import AgeBased
-from . import FitnessBased
+from .SurvivorSelectors import SurvivorSelectors
+from .AgeBased import AgeBased
+from .FitnessBased import FitnessBased
 
 from .Factory import knownTypes
 from .Factory import returnInstance

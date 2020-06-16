@@ -21,7 +21,7 @@ from __future__ import absolute_import
 # 'from Optimizers.Optimizer import Sampler' outside of this submodule
 
 # TODO
-from . import Mutators
+from .Mutators import Mutators
 # from .BitFlip import BitFlip
 # from .RandomResetting import RandomResetting
 # from .Swap import Swap

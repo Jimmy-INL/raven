@@ -21,12 +21,12 @@ from __future__ import absolute_import
 # 'from Optimizers.Optimizer import Sampler' outside of this submodule
 
 # TODO
-from . import Crossovers
-# from .OnePoint import OnePoint
-# from .MultiPoint import MultiPoint
-# from .Uniform import Uniform
-# from .Recombination import Recombination
-# from .Davis import Davis
+from .Crossovers import Crossovers
+from .OnePoint import OnePoint
+# from . import MultiPoint
+# from . import Uniform
+# from . import Recombination
+# from . import Davis
 
 from .Factory import knownTypes
 from .Factory import returnInstance

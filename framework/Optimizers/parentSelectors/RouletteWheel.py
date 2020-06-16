@@ -44,6 +44,7 @@ class RouletteWheel(ParentSelectors):
       Roulette Selection mechanism for parent selection
       @ In, population, 2darray, all chromosomes (idividuals) candidate to be parents, i.e. np.shape(population) = populationSize x nGenes.
       @ In, fitness, 1darray, fitness of each chromosome, i.e., len(fitness) = populationSize
+      @ Out, counter, integer, the id of the selected parent
       @ Out, selectedParents,2darray, selected parents, i.e. np.shape(selectedParents) = nParents x nGenes.
     """
     selectionProb = fitnesses/np.sum(fitnesses)
@@ -60,7 +61,7 @@ class RouletteWheel(ParentSelectors):
       counter += 1
       sumProb += selectionProb[counter]
     selectedParent = population[counter]
-    return selectedParent
+    return counter, selectedParent
 
 
   ###################

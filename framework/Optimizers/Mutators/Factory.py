@@ -20,7 +20,8 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 #End compatibility block for Python 3-------------------------------------------
 
 ################################################################################
-from . import Mutators
+from .Mutators import Mutators
+from .RandomMutation import RandomMutation
 # from .BitFlip import BitFlip
 # from .RandomResetting import RandomResetting
 # from .Swap import Swap
@@ -31,6 +32,7 @@ from . import Mutators
 # imports defined above.
 __base = 'Optimizer'
 __interFaceDict = {}
+__interFaceDict['RandomMutation'] = RandomMutation
 # __interFaceDict['BitFlip'] = BitFlip
 # __interFaceDict['RandomResetting'] = RandomResetting
 # __interFaceDict['Swap'] = Swap

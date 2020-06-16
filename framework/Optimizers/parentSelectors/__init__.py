@@ -21,7 +21,7 @@ from __future__ import absolute_import
 # 'from Optimizers.Optimizer import Sampler' outside of this submodule
 
 # TODO
-from . import ParentSelectors
+from .ParentSelectors import ParentSelectors
 from .RouletteWheel import RouletteWheel
 # from .SUS import SUS
 # from .Tournament import Tournament

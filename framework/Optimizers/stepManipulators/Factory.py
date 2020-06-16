@@ -27,7 +27,7 @@ from .ConjugateGradient import ConjugateGradient
 
 
 """
- Interface Dictionary (factory) (private)
+  Interface Dictionary (factory) (private)
 """
 # This machinery will automatically populate the "knownTypes" given the
 # imports defined above.
