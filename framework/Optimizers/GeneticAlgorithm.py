@@ -298,7 +298,11 @@ class GeneticAlgorithm(RavenSampled):
     # crossover
     children = self._crossoverInstance.Cross(parents,0.9,3)
     # Mutation
+    ## TODO make the mutation prob and point a user input
     children = self._mutationInstance.Mutate(children[0,:],0.3)
+
+
+
 
   def _submitRun(self, point, traj, step, moreInfo=None):
     """

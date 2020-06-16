@@ -22,6 +22,7 @@ from __future__ import division, print_function, unicode_literals, absolute_impo
 ################################################################################
 from .Mutators import Mutators
 from .RandomMutation import RandomMutation
+from .UniformMutation import UniformMutation
 # from .BitFlip import BitFlip
 # from .RandomResetting import RandomResetting
 # from .Swap import Swap
@@ -33,6 +34,7 @@ from .RandomMutation import RandomMutation
 __base = 'Optimizer'
 __interFaceDict = {}
 __interFaceDict['RandomMutation'] = RandomMutation
+__interFaceDict['UniformMutation'] = UniformMutation
 # __interFaceDict['BitFlip'] = BitFlip
 # __interFaceDict['RandomResetting'] = RandomResetting
 # __interFaceDict['Swap'] = Swap
