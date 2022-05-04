@@ -133,11 +133,11 @@ class Representativity(ValidationBase):
       self.raiseAnError(IOError, "Variables {} are missing from DataObject {}".format(','.join(missing), self.targetDataObject[0].name))
 
     featStat = self.getBasicStat()
-    featStat.toDo = {'NormalizedSensitivity':[{'targets':set([x.split("|")[-1] for x in self.features]), 'features':set([x.split("|")[-1] for x in self.featureParameters]),'prefix':self.senPrefix}]}
+    featStat.toDo = {'sensitivity':[{'targets':set([x.split("|")[-1] for x in self.features]), 'features':set([x.split("|")[-1] for x in self.featureParameters]),'prefix':self.senPrefix}]}
     featStat.initialize(runInfo, [self.featureDataObject[0]], initDict)
     self.stat[self.featureDataObject[-1]] = featStat
     tartStat = self.getBasicStat()
-    tartStat.toDo = {'NormalizedSensitivity':[{'targets':set([x.split("|")[-1] for x in self.targets]), 'features':set([x.split("|")[-1] for x in self.targetParameters]),'prefix':self.senPrefix}]}
+    tartStat.toDo = {'sensitivity':[{'targets':set([x.split("|")[-1] for x in self.targets]), 'features':set([x.split("|")[-1] for x in self.targetParameters]),'prefix':self.senPrefix}]}
     tartStat.initialize(runInfo, [self.targetDataObject[0]], initDict)
     self.stat[self.targetDataObject[-1]] = tartStat
 
@@ -191,10 +191,12 @@ class Representativity(ValidationBase):
       @ In, kwargs, dict, keyword arguments
       @ Out, outputDict, dict, dictionary containing the results {"feat"_"target"_"metric_name":value}
     """
+    self._addRefValues(datasets[0])
     sens = self.stat[self.featureDataObject[-1]].run({"Data":[[None, None, datasets[self.featureDataObject[-1]]]]})
-    senMeasurables = self._generateSensitivityMatrix(self.features, self.featureParameters, sens)
+    senMeasurables = self._generateSensitivityMatrix(self.features, self.featureParameters, sens, datasets)
+
     sens = self.stat[self.targetDataObject[-1]].run({"Data":[[None, None, datasets[self.targetDataObject[-1]]]]})
-    senFOMs = self._generateSensitivityMatrix(self.targets, self.targetParameters, sens)
+    senFOMs = self._generateSensitivityMatrix(self.targets, self.targetParameters, sens, datasets)
 
     names = kwargs.get('dataobjectNames')
     outs = {}
@@ -209,7 +211,7 @@ class Representativity(ValidationBase):
         outs[name] = metric.evaluate((featData, targData), senFOMs = senFOMs, senMeasurables=senMeasurables, covParameters=covParameters)
     return outs
 
-  def _generateSensitivityMatrix(self, outputs, inputs, sensDict):
+  def _generateSensitivityMatrix(self, outputs, inputs, sensDict, datasets, normalize=True):
     """
       Reconstruct sensitivity matrix from the Basic Statistic calculation
       @ In, inputs, list, list of input variables
@@ -224,7 +226,10 @@ class Representativity(ValidationBase):
       for j, inpVar in enumerate(inputVars):
         senName = "{}_{}_{}".format(self.senPrefix, outVar, inpVar)
         # Assume static data (PointSets are provided as input)
-        sensMatr[i, j] = sensDict[senName][0]
+        if not normalize:
+          sensMatr[i, j] = sensDict[senName][0]
+        else:
+          sensMatr[i, j] = sensDict[senName][0]* datasets[0][inpVar].referenceValue / datasets[0][outVar].referenceValue
     return sensMatr
 
   def _getDataFromDatasets(self, datasets, var, names=None):
@@ -258,3 +263,8 @@ class Representativity(ValidationBase):
       dat.shape = (dat.shape[0], 1)
     data = dat, pw
     return data
+
+  def _addRefValues(self, datasets, ):
+    for var in [x.split("|")[-1] for x in self.featureParameters + self.features]: #datasets.data_vars
+      datasets[var].attrs['referenceValue'] = np.mean(datasets[var].values)
+    return datasets
