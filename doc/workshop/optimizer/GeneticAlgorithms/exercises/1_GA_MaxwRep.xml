@@ -40,7 +40,7 @@
   </Models>
 
   <Distributions>
-    <UniformDiscrete name='woRep_dist'><!--Fill this in-->
+    <UniformDiscrete name='woRep_dist'>
       <lowerBound>2</lowerBound>
       <upperBound>7</upperBound>
       <strategy>withoutReplacement</strategy>
@@ -84,30 +84,30 @@
       </convergence>
 
       <variable name="x1">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x2">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x3">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x4">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x5">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x6">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
-      <objective>obj</objective><!--Fill this in-->
+      <objective>obj</objective><!--Make sure this is consistent with the model-->
       <TargetEvaluation class="DataObjects" type="PointSet">optOut</TargetEvaluation>
       <Sampler class="Samplers" type="MonteCarlo">MC_samp</Sampler>
     </GeneticAlgorithm>
@@ -120,27 +120,27 @@
         <initialSeed>050877</initialSeed>
       </samplerInit>
       <variable name="x1">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x2">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x3">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x4">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x5">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
       <variable name="x6">
-        <distribution>wRep_dist</distribution><!--Fill this in-->
+        <distribution>wRep_dist</distribution>
       </variable>
 
     </MonteCarlo>
@@ -149,8 +149,8 @@
   <DataObjects>
     <PointSet name="placeholder"/>
     <PointSet name="optOut">
-      <Input>x1,x2,x3,x4,x5,x6</Input><!--Fill this in-->
-      <Output>obj</Output><!--Fill this in-->
+      <Input>x1,x2,x3,x4,x5,x6</Input>
+      <Output>obj</Output>
     </PointSet>
     <PointSet name="opt_export">
       <Input>trajID</Input>
