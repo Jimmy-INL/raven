@@ -103,7 +103,7 @@ class Optimizer(AdaptiveSampler):
         descr=r"""seed for random number generation. Note that by default RAVEN uses an internal seed,
               so this seed must be changed to observe changed behavior. \default{RAVEN-determined}""")
     minMaxEnum = InputTypes.makeEnumType('MinMax', 'MinMaxType', ['min', 'max'])
-    minMaxList = InputTypes.StringListType()
+    minMaxList = InputTypes.StringListType() ##TODO this should be an enum similar to the previous line
     minMax = InputData.parameterInputFactory('type', contentType=minMaxList,
         descr=r"""the type of optimization to perform. \xmlString{min} will search for the lowest
               \xmlNode{objective} value, while \xmlString{max} will search for the highest value.""")

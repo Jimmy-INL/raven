@@ -43,6 +43,7 @@ from .crossOverOperators.crossovers import returnInstance as crossoversReturnIns
 from .mutators.mutators import returnInstance as mutatorsReturnInstance
 from .survivorSelectors.survivorSelectors import returnInstance as survivorSelectionReturnInstance
 from .fitness.fitness import returnInstance as fitnessReturnInstance
+from .crossOverOperators.crossovers import getAdaptiveLinearCrossoverProbability
 from .repairOperators.repair import returnInstance as repairReturnInstance
 # Internal Modules End------------------------------------------------------------------------------
 
@@ -776,6 +777,8 @@ class GeneticAlgorithm(RavenSampled):
 
       # 2 @ n: Crossover from set of parents
       # Create childrenCoordinates (x1,...,xM)
+      if self._crossoverProb == 'linear':
+        self._crossoverProb = getAdaptiveLinearCrossoverProbability(self.getIteration(traj),self.limit)  
       childrenXover = self._crossoverInstance(parents=parents,
                                               variables=list(self.toBeSampled),
                                               crossoverProb=self._crossoverProb,

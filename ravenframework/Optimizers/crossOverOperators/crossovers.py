@@ -215,3 +215,8 @@ def uniformCrossoverMethod(parent1,parent2,crossoverProb):
       children2[pos] = parent2[pos]
 
   return children1,children2
+
+def getAdaptiveLinearCrossoverProbability(iter,nGeneration):
+  CrossoverProb=1- 2*iter/nGeneration # ILM/DHC method
+  # newCrossoverProb2=((2*ind)/nChildren) # DHM/ILC method
+  return CrossoverProb
