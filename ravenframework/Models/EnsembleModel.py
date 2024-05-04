@@ -508,6 +508,7 @@ class EnsembleModel(Dummy):
       @ Out, returnValue, dict, This holds the output information of the evaluated sample.
     """
     kwargsToKeep = { keepKey: kwargs[keepKey] for keepKey in list(kwargs.keys())}
+    kwargsToKeep['SampledVars']['decay_B'] = kwargsToKeep['SampledVars']['decay_A'] + 0.0001
     jobHandler = kwargs['jobHandler'] if self.parallelStrategy == 2 else None
     Input = self.createNewInput(myInput[0], samplerType, **kwargsToKeep)
 

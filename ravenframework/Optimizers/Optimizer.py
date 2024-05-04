@@ -431,7 +431,7 @@ class Optimizer(AdaptiveSampler):
       self._initSampler.generateInput(None, None)
       rlz = self._initSampler.inputInfo['SampledVars']
       # NOTE by looping over self.toBeSampled, we could potentially not error out when extra vars are sampled
-      for var in self.toBeSampled:
+      for var in (self.toBeSampled | self.dependentSample):
         if var in rlz:
           self._initialValues[n][var] = rlz[var] # TODO float or np.1darray?
 
