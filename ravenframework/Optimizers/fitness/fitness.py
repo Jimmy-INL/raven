@@ -128,7 +128,7 @@ def feasibleFirst(rlz,**kwargs):
       else:
         fit = -a[i]*worstObj
         for constInd,_ in enumerate(g['Constraint'].data):
-          fit = a[i]*fit + objPen[objVar[i]][constInd]*(max(0,-1*g.data[ind, constInd])) #NOTE: objPen[objVar[i]][constInd] is "objective & Constraint specific penalty."
+          fit = fit - objPen[objVar[i]][constInd]*(max(0,-1*g.data[ind, constInd])) #NOTE: objPen[objVar[i]][constInd] is "objective & Constraint specific penalty."
       fitness.append(fit)
 
     fitness = xr.DataArray(np.array(fitness),
