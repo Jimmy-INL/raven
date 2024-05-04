@@ -124,15 +124,12 @@ def feasibleFirst(rlz,**kwargs):
     fitness = []
     for ind in range(data.size):
       if kwargs['constraintNum'] == 0 or np.all(g.data[ind, :]>=0):
-        fit=(a[i]*data[ind])
+        fit=(-a[i]*data[ind])
       else:
-        fit = a[i]*worstObj
+        fit = -a[i]*worstObj
         for constInd,_ in enumerate(g['Constraint'].data):
           fit = a[i]*fit + objPen[objVar[i]][constInd]*(max(0,-1*g.data[ind, constInd])) #NOTE: objPen[objVar[i]][constInd] is "objective & Constraint specific penalty."
-      if len(kwargs['type']) == 1:
-        fitness.append(-1*fit)
-      else:
-        fitness.append(fit)
+      fitness.append(fit)
 
     fitness = xr.DataArray(np.array(fitness),
                           dims=['chromosome'],
