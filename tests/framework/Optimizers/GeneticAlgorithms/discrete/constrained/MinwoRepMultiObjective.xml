@@ -70,10 +70,10 @@
         <parentSelection>tournamentSelection</parentSelection>
         <reproduction>
           <crossover type="twoPointsCrossover">
-            <crossoverProb>0.8</crossoverProb>
+            <crossoverProb>0.0</crossoverProb>
           </crossover>
           <mutation type="swapMutator"> <!--swapMutator, scrambleMutator, bitFlipMutator, inversionMutator-->
-            <mutationProb>0.8</mutationProb>
+            <mutationProb>0.0</mutationProb>
           </mutation>
         </reproduction>
         <fitness type="feasibleFirst">  <!--'invLinear', 'feasibleFirst', 'hardConstraint' -->

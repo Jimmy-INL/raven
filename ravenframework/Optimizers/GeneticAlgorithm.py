@@ -45,7 +45,7 @@ from .crossOverOperators.crossovers import getQuadraticCrossoverProbability
 from .mutators.mutators import returnInstance as mutatorsReturnInstance
 from .mutators.mutators import getLinearMutationProbability
 from .mutators.mutators import getQuadraticMutationProbability
-from .survivorSelectors.survivorSelectors import returnInstance as survivorSelectionReturnInstance
+from .survivorSelectors.survivorSelectors_old import returnInstance as survivorSelectionReturnInstance
 from .fitness.fitness import returnInstance as fitnessReturnInstance
 from .repairOperators.repair import returnInstance as repairReturnInstance
 # Internal Modules End------------------------------------------------------------------------------

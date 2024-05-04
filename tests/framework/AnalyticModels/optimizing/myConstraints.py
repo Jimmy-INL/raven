@@ -54,7 +54,7 @@ def expConstr1(Input):#You are free to pick this name but it has to be similar t
     @ In, Input, object, RAVEN container
     @ out, g, float, explicit constraint 1 evaluation function
   """
-  g = 8 - Input.x3 - Input.x4
+  g = 8 - Input.x2 - Input.x3
   return g
 
 def expConstr2(Input):

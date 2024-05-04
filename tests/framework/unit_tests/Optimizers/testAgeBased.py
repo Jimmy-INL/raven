@@ -25,7 +25,7 @@ print('... located RAVEN at:', ravenPath)
 sys.path.append(ravenPath)
 from ravenframework.CustomDrivers import DriverUtils
 DriverUtils.doSetup()
-from ravenframework.Optimizers.survivorSelectors.survivorSelectors import returnInstance
+from raven.ravenframework.Optimizers.survivorSelectors.survivorSelectors_old import returnInstance
 
 ageBased = returnInstance('tester', 'ageBased')
 
