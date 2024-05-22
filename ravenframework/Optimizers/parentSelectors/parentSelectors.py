@@ -21,10 +21,15 @@
   Created June,16,2020
   @authors: Mohammad Abdo, Diego Mandelli, Andrea Alfonsi
 """
-
+# External Modules----------------------------------------------------------------------------------
 import numpy as np
 import xarray as xr
 from ...utils import randomUtils
+# External Modules----------------------------------------------------------------------------------
+
+# Internal Modules----------------------------------------------------------------------------------
+from ...utils.gaUtils import dataArrayToDict, datasetToDataArray
+# Internal Modules End------------------------------------------------------------------------------
 
 # For mandd: to be updated with RAVEN official tools
 from itertools import combinations
@@ -42,7 +47,7 @@ def rouletteWheel(population,**kwargs):
   """
   # Arguments
   pop = population
-  fitness = kwargs['fitness']
+  fitness = np.array([item for sublist in datasetToDataArray(kwargs['fitness'], list(kwargs['fitness'].keys())).data for item in sublist])  
   nParents= kwargs['nParents']
   # if nparents = population size then do nothing (whole population are parents)
   if nParents == pop.shape[0]:
@@ -62,11 +67,11 @@ def rouletteWheel(population,**kwargs):
     roulettePointer = randomUtils.random(dim=1, samples=1)
     # initialize Probability
     counter = 0
-    if np.all(fitness.data>=0) or np.all(fitness.data<=0):
-      selectionProb = fitness.data/np.sum(fitness.data) # Share of the pie (rouletteWheel)
+    if np.all(fitness>=0) or np.all(fitness<=0):
+      selectionProb = fitness/np.sum(fitness) # Share of the pie (rouletteWheel)
     else:
       # shift the fitness to be all positive
-      shiftedFitness = fitness.data + abs(min(fitness.data))
+      shiftedFitness = fitness + abs(min(fitness))
       selectionProb = shiftedFitness/np.sum(shiftedFitness) # Share of the pie (rouletteWheel)
     sumProb = selectionProb[counter]
 
@@ -100,20 +105,20 @@ def tournamentSelection(population,**kwargs):
     # the key rank is used in multi-objective optimization where rank identifies which front the point belongs to
     rank = kwargs['rank']
     crowdDistance = kwargs['crowdDistance']
-    constraintInfo = kwargs['constraint']
+    # constraintInfo = kwargs['constraint']
     multiObjectiveRanking = True
-    matrixOperationRaw = np.zeros((popSize, 4))
+    matrixOperationRaw = np.zeros((popSize, 3))    #NOTE if constraint is needed to eliminate chromosome violating constraints, then poopSize should be 4.
     matrixOperationRaw[:,0] = np.transpose(np.arange(popSize))
     matrixOperationRaw[:,1] = np.transpose(crowdDistance.data)
     matrixOperationRaw[:,2] = np.transpose(rank.data)
-    matrixOperationRaw[:,3] = np.transpose(constraintInfo.data)
+    # matrixOperationRaw[:,3] = np.transpose(constraintInfo.data)
     matrixOperation = np.zeros((popSize,len(matrixOperationRaw[0])))
   else:
-    fitness = kwargs['fitness']
+    fitness = np.array([item for sublist in datasetToDataArray(kwargs['fitness'], list(kwargs['fitness'].keys())).data for item in sublist])  
     multiObjectiveRanking = False
     matrixOperationRaw = np.zeros((popSize,2))
     matrixOperationRaw[:,0] = np.transpose(np.arange(popSize))
-    matrixOperationRaw[:,1] = np.transpose(fitness.data)
+    matrixOperationRaw[:,1] = np.transpose(fitness)
     matrixOperation = np.zeros((popSize,2))
 
   indexes = list(np.arange(popSize))
@@ -139,18 +144,13 @@ def tournamentSelection(population,**kwargs):
       selectedParent[i,:] = pop.values[index,:]
   else:                            # multi-objective implementation of tournamentSelection
     for i in range(nParents):
-      if      matrixOperation[2*i,3] > matrixOperation[2*i+1,3]:  index = int(matrixOperation[2*i+1,0])
-      elif    matrixOperation[2*i,3] < matrixOperation[2*i+1,3]:  index = int(matrixOperation[2*i,0])
-      elif    matrixOperation[2*i,3] == matrixOperation[2*i+1,3]:  # if same number of constraints violations
-        if    matrixOperation[2*i,2] > matrixOperation[2*i+1,2]:
-          index = int(matrixOperation[2*i+1,0])
-        elif  matrixOperation[2*i,2] < matrixOperation[2*i+1,2]:
-          index = int(matrixOperation[2*i,0])
-        else: # same number of constraints and same rank case
-          if matrixOperation[2*i,1] > matrixOperation[2*i+1,1]:
-            index = int(matrixOperation[2*i,0])
-          else:
-            index = int(matrixOperation[2*i+1,0])
+      if      matrixOperation[2*i,2] > matrixOperation[2*i+1,2]:  index = int(matrixOperation[2*i+1,0])
+      elif    matrixOperation[2*i,2] < matrixOperation[2*i+1,2]:  index = int(matrixOperation[2*i,0])
+      elif    matrixOperation[2*i,2] == matrixOperation[2*i+1,2]:  # if same rank, then compare CD
+        if    matrixOperation[2*i,1] > matrixOperation[2*i+1,1]:  index = int(matrixOperation[2*i,0])
+        elif  matrixOperation[2*i,2] < matrixOperation[2*i+1,2]:  index = int(matrixOperation[2*i+1,0])
+        else: # same rank and same CD
+          index = int(matrixOperation[2*i+1,0])  #NOTE if rank and CD are same, then any chromosome can be selected.
       selectedParent[i,:] = pop.values[index,:]
 
   return selectedParent

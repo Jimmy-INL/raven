@@ -21,10 +21,15 @@
   Created June,16,2020
   @authors: Mohammad Abdo, Diego Mandelli, Andrea Alfonsi
 """
-
+# External Modules----------------------------------------------------------------------------------
 import numpy as np
 import xarray as xr
 from ravenframework.utils import frontUtils
+# External Modules End------------------------------------------------------------------------------
+
+# Internal Modules----------------------------------------------------------------------------------
+from ...utils.gaUtils import dataArrayToDict, datasetToDataArray
+# Internal Modules End------------------------------------------------------------------------------
 
 # @profile
 def ageBased(newRlz,**kwargs):
@@ -97,11 +102,12 @@ def fitnessBased(newRlz,**kwargs):
   else:
     popAge = kwargs['age']
 
-  offSpringsFitness = np.atleast_1d(kwargs['offSpringsFitness'])
+  offSpringsFitness = datasetToDataArray(kwargs['offSpringsFitness'], list(kwargs['offSpringsFitness'].keys())).data
+  offSpringsFitness = np.array([item for sublist in offSpringsFitness for item in sublist])
   offSprings = np.atleast_2d(newRlz[kwargs['variables']].to_array().transpose().data)
   population = np.atleast_2d(kwargs['population'].data)
-  popFitness = np.atleast_1d(kwargs['fitness'].data)
-
+  popFitness = datasetToDataArray(kwargs['fitness'], list(kwargs['fitness'].keys())).data
+  popFitness = np.array([item for sublist in popFitness for item in sublist])
   newPopulation = population
   newFitness = popFitness
   newAge = list(map(lambda x:x+1, popAge))
@@ -123,6 +129,7 @@ def fitnessBased(newRlz,**kwargs):
   newFitness = xr.DataArray(newFitness,
                             dims=['chromosome'],
                             coords={'chromosome':np.arange(np.shape(newFitness)[0])})
+  newFitness = newFitness.to_dataset(name = list(kwargs['fitness'].keys())[0])
 
   #return newPopulationArray,newFitness,newAge
   return newPopulationArray,newFitness,newAge,kwargs['popObjectiveVal']
@@ -151,12 +158,19 @@ def rankNcrowdingBased(offsprings, **kwargs):
   offSprings = np.atleast_2d(offsprings[kwargs['variables']].to_array().transpose().data)
   popObjectiveVal = kwargs['popObjectiveVal']
   offObjectiveVal = kwargs['offObjectiveVal']
-  popConst = kwargs['popConst'].data
-  offConst = kwargs['offConst'].data
+  popFit = kwargs['popFit']
+  popFitArray = []
+  offFit = kwargs['offFit']
+  offFitArray = []
+  for i in list(popFit.keys()): #NOTE popFit.keys() and offFit.keys() must be same. 
+    popFitArray.append(popFit[i].data.tolist())
+    offFitArray.append(offFit[i].data.tolist())
+
+  newFitMerged      = np.array([i + j for i, j in zip(popFitArray, offFitArray)])
+  newFitMerged_pair = [list(ele) for ele in list(zip(*newFitMerged))]
+
   popConstV = kwargs['popConstV'].data
   offConstV = kwargs['offConstV'].data
-
-  newConstMerged = np.append(popConst, offConst)
   newConstVMerged = np.array(popConstV.tolist() + offConstV.tolist())
 
   newObjectivesMerged = np.array([i + j for i, j in zip(popObjectiveVal, offObjectiveVal)])
@@ -175,15 +189,16 @@ def rankNcrowdingBased(offsprings, **kwargs):
   newAge = list(map(lambda x:x+1, popAge))
   newPopulationMerged = np.concatenate([population,offSprings])
   newAge.extend([0]*len(offSprings))
-
-  sortedConst,sortedRank,sortedCD,sortedAge,sortedPopulation,sortedObjectives,sortedConstV = \
+  
+  sortedRank,sortedCD,sortedAge,sortedPopulation,sortedFit,sortedObjectives,sortedConstV = \
     zip(*[(x,y,z,i,j,k,a) for x,y,z,i,j,k,a in \
-      sorted(zip(newConstMerged,newPopRank.data,newPopCD.data,newAge,newPopulationMerged.tolist(),newObjectivesMerged_pair,newConstVMerged),reverse=False,key=lambda x: (x[0], x[1], -x[2]))])
-  sortedConstT,sortedRankT,sortedCDT,sortedAgeT,sortedPopulationT,sortedObjectivesT,sortedConstVT = \
-    np.atleast_1d(list(sortedConst)),np.atleast_1d(list(sortedRank)),list(sortedCD),list(sortedAge),np.atleast_1d(list(sortedPopulation)),np.atleast_1d(list(sortedObjectives)),np.atleast_1d(list(sortedConstV))
+      sorted(zip(newPopRank.data, newPopCD.data, newAge, newPopulationMerged.tolist(), newFitMerged_pair, newObjectivesMerged_pair, newConstVMerged),reverse=False,key=lambda x: (x[0], -x[1]))])
+  sortedRankT, sortedCDT, sortedAgeT, sortedPopulationT, sortedFitT, sortedObjectivesT, sortedConstVT = \
+    np.atleast_1d(list(sortedRank)), list(sortedCD), list(sortedAge),np.atleast_1d(list(sortedPopulation)),np.atleast_1d(list(sortedFit)),np.atleast_1d(list(sortedObjectives)),np.atleast_1d(list(sortedConstV))
 
   newPopulation = sortedPopulationT[:-len(offSprings)]
   newObjectives = sortedObjectivesT[:-len(offSprings)]
+  newFit        = sortedFitT[:-len(offSprings)]
 
   newRank = frontUtils.rankNonDominatedFrontiers(newObjectives)
   newRank = xr.DataArray(newRank,
@@ -197,23 +212,27 @@ def rankNcrowdingBased(offsprings, **kwargs):
                        coords={'CrowdingDistance': np.arange(np.shape(newCD)[0])})
 
   newAge = sortedAgeT[:-len(offSprings)]
-  newConst = sortedConstT[:-len(offSprings)]
   newConstV = sortedConstVT[:-len(offSprings)]
+
+  for i in range(len(list(popFit.keys()))):
+    fitness = xr.DataArray(newFit[:,i],
+                           dims=['chromosome'],
+                           coords={'chromosome': np.arange(len(newFit[:,i]))})
+    if i == 0:
+      newFitnessSet = fitness.to_dataset(name = list(popFit.keys())[i])
+    else:
+      newFitnessSet[list(popFit.keys())[i]] = fitness
 
   newPopulationArray = xr.DataArray(newPopulation,
                                     dims=['chromosome','Gene'],
                                     coords={'chromosome':np.arange(np.shape(newPopulation)[0]),
                                             'Gene': kwargs['variables']})
-  newConst = xr.DataArray(newConst,
-                          dims=['NumOfConstViolated'],
-                          coords={'NumOfConstViolated':np.arange(np.shape(newConst)[0])})
-
   newConstV = xr.DataArray(newConstV,
                            dims=['chromosome','ConstEvaluation'],
                            coords={'chromosome':np.arange(np.shape(newPopulation)[0]),
                                    'ConstEvaluation':np.arange(np.shape(newConstV)[1])})
 
-  return newPopulationArray,newRank,newAge,newCD,newObjectivesP,newConst,newConstV
+  return newPopulationArray,newRank,newAge,newCD,newObjectivesP,newFitnessSet,newConstV
 
 __survivorSelectors = {}
 __survivorSelectors['ageBased'] = ageBased
