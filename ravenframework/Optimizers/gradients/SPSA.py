@@ -55,7 +55,7 @@ class SPSA(GradientApproximator):
 
     return specs
 
-  def chooseEvaluationPoints(self, opt, stepSize, constraints=None):
+  def chooseEvaluationPoints(self, opt, stepSize, constraints=None, **kwargs):
     """
       Determines new point(s) needed to evaluate gradient
       @ In, opt, dict, current opt point (normalized)
@@ -64,17 +64,32 @@ class SPSA(GradientApproximator):
       @ Out, evalPoints, list(dict), list of points that need sampling
       @ Out, evalInfo, list(dict), identifying information about points
     """
-    dh = self._proximity * stepSize
-    perturb = np.atleast_1d(randomUtils.randPointsOnHypersphere(self.N))
+    alpha = 0.602 # maybe make it a user input
+    gamma = 0.101 # maybe make it a user input
+    c = 0.01 # maybe make it a user input
+    k = kwargs['iter']
+    numIterations = kwargs['numIterations']
+    a = 0.01 * (numIterations+1) ** alpha
+    ak = a / (k + 1) ** alpha # Not needed here but in the parameters update
+    ck = c / (k + 1) ** gamma
+    dh =  ck # self._proximity * stepSize
+    # perturb = np.atleast_1d(randomUtils.randPointsOnHypersphere(self.N))
+    perturb = np.atleast_1d(randomUtils.randomChoice([1,-1],self.N))
     delta = {}
-    new = {}
+    new1 = new2 = {}
+    evalInfo = []
     for i, var in enumerate(self._optVars):
       delta[var] = perturb[i] * dh
-      new[var] = opt[var] + delta[var]
+      new1[var] = opt[var] + delta[var]
+      new2[var] = opt[var] - delta[var]
     # only one point needed for SPSA, but still needs to store as a list
-    evalPoints = [new]
-    evalInfo = [{'type': 'grad',
-                 'delta': delta}]
+    evalPoints = [new1,new2]
+    evalInfo.append({'type': 'grad',
+                    'delta': delta,
+                    'side': 'negative'})
+    evalInfo.append({'type': 'grad',
+                    'delta': delta,
+                    'side': 'positive'})
 
     return evalPoints, evalInfo
 
@@ -89,11 +104,11 @@ class SPSA(GradientApproximator):
       @ Out, direction, dict, versor (unit vector) for gradient direction
     """
     gradient = {}
-    lossDiff = np.atleast_1d(mathUtils.diffWithInfinites(grads[0][objVar], opt[objVar]))
+    lossDiff = np.atleast_1d(mathUtils.diffWithInfinites(grads[1][objVar], grads[0][objVar]))
     for var in self._optVars:
       # don't assume delta is unchanged; calculate it here
-      delta = grads[0][var] - opt[var]
-      gradient[var] = lossDiff / delta
+      delta = grads[1][var] - grads[0][var]
+      gradient[var] = lossDiff / (2*delta)
     magnitude, direction, foundInf = mathUtils.calculateMagnitudeAndVersor(list(gradient.values()))
     direction = dict((var, float(direction[v])) for v, var in enumerate(gradient.keys()))
 
@@ -106,4 +121,4 @@ class SPSA(GradientApproximator):
       @ Out, None
     """
     # SPSA always uses 1 point, regardless
-    return 1
+    return 2

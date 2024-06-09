@@ -298,7 +298,7 @@ class GradientDescent(RavenSampled):
     initialStepSize = self._stepInstance.initialStepSize(len(self.toBeSampled)) # TODO user scaling option
     for traj, init in enumerate(self._initialValues):
       self._stepHistory[traj].append({'magnitude': initialStepSize, 'versor': None, 'info': None})
-      self._submitOptAndGrads(init, traj, 0, initialStepSize)
+      self._submitOptAndGrads(init, traj, 0, initialStepSize, iter=self.counter, numIterations=self.limit)
 
 
   ###############
@@ -529,7 +529,7 @@ class GradientDescent(RavenSampled):
 
   # * * * * * * * * * * * * * * * *
   # Queuing Runs
-  def _submitOptAndGrads(self, opt, traj, step, stepSize):
+  def _submitOptAndGrads(self, opt, traj, step, stepSize,**kwargs):
     """
       Submits a set of opt + grad points to the submission queue
       @ In, opt, dict, suggested opt point to evaluate
@@ -554,7 +554,7 @@ class GradientDescent(RavenSampled):
                    'inputs': copy.deepcopy(self.constants),
                    'normalize': self.normalizeData,
                    'denormalize': self.denormalizeData}
-    gradPoints, gradInfos = self._gradientInstance.chooseEvaluationPoints(opt, stepSize, constraints=constraints)
+    gradPoints, gradInfos = self._gradientInstance.chooseEvaluationPoints(opt, stepSize, constraints=constraints,**kwargs)
     for i, grad in enumerate(gradPoints):
       self._submitRun(grad, traj, step, f'grad_{i}', moreInfo=gradInfos[i])
 
