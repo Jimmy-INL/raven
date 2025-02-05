@@ -148,9 +148,18 @@ def fitnessBased(newRlz,**kwargs):
   sorted_age = list(sorted_age)
   sorted_population = np.atleast_1d(list(sorted_population))
 
-  newPopulationSorted = sorted_population[:popSize]
-  newFitness = sorted_fitness[:popSize]
-  newAge = sorted_age[:popSize]
+  if len(sorted_population) < popSize:
+    #add orig population back if not enough generated.
+    curLen = len(sorted_population)
+    addLen = popSize - curLen
+    newPopulationSorted = np.vstack([sorted_population, newPopulationMerged[:addLen]])
+    newFitness = np.hstack([sorted_fitness,newFitness[:addLen]])
+    newAge = np.hstack([sorted_age, newAge[:addLen]])
+  else:
+    newPopulationSorted = sorted_population[:popSize]
+    newFitness = sorted_fitness[:popSize]
+    newAge = sorted_age[:popSize]
+
 
   newPopulationArray = xr.DataArray(newPopulationSorted,
                                     dims=['chromosome', 'Gene'],

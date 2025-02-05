@@ -797,6 +797,8 @@ class GeneticAlgorithm(RavenSampled):
       else:
           objectiveVal = list(np.atleast_1d(rlz[self._objectiveVar[0]].data))
       self.objectiveVal = objectiveVal
+      self.population = rlz[self.toBeSampled.keys()].to_dataarray(dim="Gene").transpose()
+      self.population = self.population.assign_coords(chromosome=("RAVEN_sample_ID", range(self.population.shape[0]))).rename({"RAVEN_sample_ID": "chromosome"})
       g = constraintHandling(self, rlz, offSprings, objectiveVal, multiObjective=self._isMultiObjective)
 
       # 2 compute fitness
