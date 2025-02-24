@@ -234,8 +234,6 @@
                                                                 | _popDist                           |
                                                                 | _rejectOptPoint                    |
                                                                 | _resolveNewGeneration              |
-                                                                | _resolveNewGenerationMulti         |
-                                                                | _solutionExportUtilityUpdate       |
                                                                 | _submitRun                         |
                                                                 | _updateConvergence                 |
                                                                 | _updatePersistence                 |
@@ -925,27 +923,65 @@ class GeneticAlgorithm(RavenSampled):
       # Make sure no children are exactly similar to parents
       foundRepeats = self._removeRepeats
       counter = 0
-      print(f"{children=}")
-      children_copy = children.copy()
-      while foundRepeats and counter < self._populationSize:
-        counter += 1
-        foundRepeats = False
-        for i in range(np.shape(self.population.data)[0]):
-          repeated =[]
-          for j in range(i,np.shape(children.data)[0]):
-            if all(self.population.data[i,:]==children.data[j,:]):
-              repeated.append(j)
-              repeated = list(set(repeated))
-          if repeated:
-            print(f"{repeated=}")
-            newChildren = self._mutationInstance(offSprings=children[repeated,:],
-                                                 distDict=self.distDict,
-                                                 locs=self._mutationLocs,
-                                                 mutationProb=self._mutationProb,
-                                                 variables=list(self.toBeSampled))
-            children.data[repeated,:] = newChildren.data
-            foundRepeats = True
-      #breakpoint()
+      # children_copy = children.copy()
+
+      # Convert to set for faster lookup
+      population_set = set(map(tuple, self.population.data))
+      children_set = set(map(tuple, children.data))
+
+      while (foundRepeats and counter < self._populationSize):
+          counter += 1
+          foundRepeats = False
+          repeated_indices = []
+
+          # Check for duplicates within children
+          unique_children = set()
+          for idx, child in enumerate(children.data):
+              child_tuple = tuple(child)
+              if child_tuple in unique_children or child_tuple in population_set:
+                  repeated_indices.append(idx)
+              else:
+                  unique_children.add(child_tuple)
+
+          if repeated_indices:
+              print(f"{repeated_indices=}")
+              newChildren = self._mutationInstance(offSprings=children[repeated_indices, :],
+                                                   distDict=self.distDict,
+                                                   locs=self._mutationLocs,
+                                                   mutationProb=1.0,
+                                                   variables=list(self.toBeSampled))
+              children.data[repeated_indices, :] = newChildren.data
+              foundRepeats = True
+
+          # Update children_set with new children after mutation
+          children_set = set(map(tuple, children.data))
+
+      # Ensure all children are unique within themselves and against the population
+      while len(children_set) < len(children.data) and counter < self._populationSize:
+          repeated_indices = []
+          unique_children = set()
+
+          for idx, child in enumerate(children.data):
+              child_tuple = tuple(child)
+              if child_tuple in unique_children or child_tuple in population_set:
+                  repeated_indices.append(idx)
+              else:
+                  unique_children.add(child_tuple)
+
+          if repeated_indices:
+              print(f"{repeated_indices=}")
+              newChildren = self._mutationInstance(offSprings=children[repeated_indices, :],
+                                                   distDict=self.distDict,
+                                                   locs=self._mutationLocs,
+                                                   mutationProb=1.0,
+                                                   variables=list(self.toBeSampled))
+              children.data[repeated_indices, :] = newChildren.data
+              children_set = set(map(tuple, children.data))
+
+      print(f"Final children: {children.data}")
+
+
+      # breakpoint()
       # keeping the population size constant by ignoring the excessive children
       children = children[:self._populationSize, :]
       daChildren = xr.DataArray(children,
@@ -1009,25 +1045,6 @@ class GeneticAlgorithm(RavenSampled):
 
   # END queuing Runs
   # * * * * * * * * * * * * * * * *
-
-  # def _solutionExportUtilityUpdate(self, traj, rlz, fitness, g, acceptable):
-  #   """
-  #     Utility method to update the solution export
-  #     @ In, traj, int, trajectory for this new point
-  #     @ In, rlz, dict, realized realization
-  #     @ In, fitness, xr.DataArray, fitness values at each chromosome of the realization
-  #     @ In, g, xr.DataArray, the constraint evaluation function
-  #     @ In, acceptable, str, 'accetable' status (i.e. first, accepted, rejected, final)
-  #     @ Out, None
-  #   """
-  #   for i in range(rlz.sizes['RAVEN_sample_ID']):
-  #     varList = self._solutionExport.getVars('input') + self._solutionExport.getVars('output') + list(self.toBeSampled.keys())
-  #     rlzDict = dict((var,np.atleast_1d(rlz[var].data)[i]) for var in set(varList) if var in rlz.data_vars)
-  #     rlzDict[self._objectiveVar] = np.atleast_1d(rlz[self._objectiveVar].data)[i]
-  #     rlzDict['fitness'] = np.atleast_1d(fitness.data)[i]
-  #     for ind, consName in enumerate(g['Constraint'].values):
-  #       rlzDict['ConstraintEvaluation_'+consName] = g[i,ind]
-  #     self._updateSolutionExport(traj, rlzDict, acceptable, None)
 
   def _resolveNewGeneration(self, traj, rlz, info, objectiveVal=None, fitness=None, g=None):
     """

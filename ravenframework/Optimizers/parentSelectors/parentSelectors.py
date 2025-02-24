@@ -103,7 +103,6 @@ def tournamentSelection(population, **kwargs):
     @ Out, selectedParents, xr.DataArray, selected parents, i.e. np.shape(selectedParents) = nParents x nGenes.
   """
   nParents = kwargs['nParents']
-  nObjVal = len(kwargs['objVar'])
   fitness_provided = 'fitness' in kwargs
   selectedParent = xr.DataArray(np.zeros((nParents, np.shape(population.values)[1])),
                                 dims=['chromosome', 'Gene'],

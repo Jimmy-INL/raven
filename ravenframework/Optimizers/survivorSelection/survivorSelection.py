@@ -79,11 +79,12 @@ def multiObjSurvivorSelect(self, info, rlz, traj, offSprings, offSpringFitness, 
                                                                          offsprings=rlz,
                                                                          popObjectiveVal=self.objectiveVal,
                                                                          offObjectiveVal=objectiveVal,
-                                                                         popFit = self.fitness,
-                                                                         offFit = offSpringFitness,
-                                                                         popConstV = self.constraintsV,
+                                                                         popFit=self.fitness,
+                                                                         offFit=offSpringFitness,
+                                                                         self=self,
+                                                                         popConstV=self.constraintsV,
                                                                          direction=self._minMax,
-                                                                         offConstV = g)
+                                                                         offConstV=g)
   else:
     self.population = offSprings
     self.fitness = offSpringFitness
