@@ -461,7 +461,7 @@ class GeneticAlgorithm(RavenSampled):
                     \item \textit{uniformCrossover} - It randomly selects genes from two parent chromosomes with equal probability, creating offspring by exchanging genes at corresponding positions.
                   \end{itemize}""")
     crossover.addParam("type",
-                       InputTypes.makeEnumType('crossover','crossoverType',['onePointCrossover','twoPointsCrossover','uniformCrossover']),
+                       InputTypes.makeEnumType('crossover','crossoverType',['onePointCrossover','twoPointsCrossover','uniformCrossover','EQCrossover']),
                        True,
                        descr="type of crossover operation to be used. See the list of options above.")
     crossoverPoint = InputData.parameterInputFactory('points', strictMode=True,
@@ -490,7 +490,7 @@ class GeneticAlgorithm(RavenSampled):
                   \item \textit{randomMutator} - It randomly selects a gene within an chromosome and mutates the gene.
                 \end{itemize} """)
     mutation.addParam("type",
-                      InputTypes.makeEnumType('mutation','mutationType',['swapMutator','scrambleMutator','inversionMutator','randomMutator']),
+                      InputTypes.makeEnumType('mutation','mutationType',['swapMutator','scrambleMutator','inversionMutator','randomMutator','swapMutatorEQ']),
                       True,
                       descr="type of mutation operation to be used. See the list of options above.")
     mutationLocs = InputData.parameterInputFactory('locs', strictMode=True,
@@ -1419,7 +1419,8 @@ class GeneticAlgorithm(RavenSampled):
                                                distDict=self.distDict,
                                                locs=self._mutationLocs,
                                                mutationProb=self._mutationProb,
-                                               variables=list(self.toBeSampled))
+                                               variables=list(self.toBeSampled),
+                                               EQfiles=self._EQcheckfile)
 
       # ============================================================
       # PART G: Repair (if needed)
