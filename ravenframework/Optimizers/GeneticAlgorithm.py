@@ -326,6 +326,7 @@ class GeneticAlgorithm(RavenSampled):
     self.bestPoint = None                                        # the best solution (chromosome) found among population in a specific batchId
     self.bestFitness = None                                      # fitness value of the best solution found
     self.multiBestPoint = {}                                     # the best solutions (chromosomes) found among population in a specific batchId
+    self.multiBestOutputs = {}                                   # additional outputs tracked for multi-objective best solutions
     self.multiBestFitness = {}                                   # fitness values of the best solutions found
     self.multiBestObjective = {}                                 # objective values of the best solutions found
     self.multiBestConstraint = {}                                # constraint values of the best solutions found
@@ -858,7 +859,8 @@ class GeneticAlgorithm(RavenSampled):
                                    self.crowdingDistance,
                                    self.objectiveVal,
                                    self.fitness,
-                                   self.constraintsV)
+                                   self.constraintsV,
+                                   rlz)
         self._resolveNewGeneration(traj, rlz, info)
 
 
@@ -959,6 +961,7 @@ class GeneticAlgorithm(RavenSampled):
     self.bestFitness = None
     self.objectiveVal = None
     self.multiBestPoint = None
+    self.multiBestOutputs = None
     self.multiBestFitness = None
     self.multiBestObjective = None
     self.multiBestConstraint = None
@@ -991,12 +994,19 @@ class GeneticAlgorithm(RavenSampled):
 
     if self._writeSteps == 'every':
       self.raiseADebug("### rlz.sizes['RAVEN_sample_ID'] = {}".format(rlz.sizes['RAVEN_sample_ID']))
+      solutionExportVars = set(self._solutionExport.getVars('input') + self._solutionExport.getVars('output') + list(self.toBeSampled.keys()))
       for i in range(rlz.sizes['RAVEN_sample_ID']):
         if self._isMultiObjective:
-          rlzDict = self.population.isel(chromosome=i).to_series().to_dict()
+          rlzDict = {}
+          for var in solutionExportVars:
+            if var in rlz.data_vars:
+              rlzDict[var] = np.atleast_1d(rlz[var].data)[i]
+          # fall back to the stored population for decision variables that might not be present on rlz
+          popValues = self.population.isel(chromosome=i).to_series().to_dict()
+          for var, val in popValues.items():
+            rlzDict.setdefault(var, val)
           for j in range(len(self._objectiveVar)):
              rlzDict[self._objectiveVar[j]] = self.objectiveVal[j][i]
-          rlzDict['batchId'] = self.batchId
           rlzDict['rank'] = np.atleast_1d(self.rank.data)[i]
           rlzDict['CD'] = np.atleast_1d(self.crowdingDistance.data)[i]
           for ind, fitName in enumerate(list(self.fitness.keys())):
@@ -1004,8 +1014,7 @@ class GeneticAlgorithm(RavenSampled):
           for ind, consName in enumerate([y.name for y in (self._constraintFunctions + self._impConstraintFunctions)]):
             rlzDict['ConstraintEvaluation_'+consName] = self.constraintsV.data[i,ind]
         else:
-          varList = self._solutionExport.getVars('input') + self._solutionExport.getVars('output') + list(self.toBeSampled.keys())
-          rlzDict = dict((var,np.atleast_1d(rlz[var].data)[i]) for var in set(varList) if var in rlz.data_vars)
+          rlzDict = dict((var,np.atleast_1d(rlz[var].data)[i]) for var in solutionExportVars if var in rlz.data_vars)
           for j in range(len(self._objectiveVar)):
             rlzDict[self._objectiveVar[j]] = np.atleast_1d(rlz[self._objectiveVar[j]].data)[i]
           rlzDict['fitness'] = np.atleast_1d(fitness.to_array()[:,i])
@@ -1019,7 +1028,13 @@ class GeneticAlgorithm(RavenSampled):
       bestRlz = {}
       if self._isMultiObjective:
         varList = self._solutionExport.getVars('input') + self._solutionExport.getVars('output') + list(self.toBeSampled.keys())
-        bestRlz = dict((var,np.atleast_1d(self.multiBestPoint[var])) for var in set(varList) if var in list(self.toBeSampled.keys()))
+        bestRlz = {}
+        trackedVars = set(varList)
+        for var in trackedVars:
+          if var in self.multiBestPoint:
+            bestRlz[var] = np.atleast_1d(self.multiBestPoint[var])
+          elif self.multiBestOutputs and var in self.multiBestOutputs:
+            bestRlz[var] = np.atleast_1d(self.multiBestOutputs[var])
         for i in range(len(self._objectiveVar)):
           bestRlz[self._objectiveVar[i]] = [item[i] for item in self.multiBestObjective]
         bestRlz['rank'] = self.multiBestRank
@@ -1030,6 +1045,8 @@ class GeneticAlgorithm(RavenSampled):
         for ind, fitName in enumerate(list(self.multiBestFitness.keys())):
             bestRlz['FitnessEvaluation_'+ fitName] = self.multiBestFitness[fitName].data
         bestRlz.update(self.multiBestPoint)
+        if self.multiBestOutputs:
+          bestRlz.update(self.multiBestOutputs)
       else:
         bestRlz[self._objectiveVar[0]] = self.multiBestObjective[0]
         bestRlz['fitness'] = self.bestFitness
@@ -1063,7 +1080,7 @@ class GeneticAlgorithm(RavenSampled):
 
     return point
 
-  def _collectOptPointMulti(self, population, rank, CD, objVal, fitness, constraintsV):
+  def _collectOptPointMulti(self, population, rank, CD, objVal, fitness, constraintsV, rlzData=None):
     """
       Collects the point (dict) from a realization
       @ In, population, Dataset, container containing the population
@@ -1097,12 +1114,23 @@ class GeneticAlgorithm(RavenSampled):
                             coords={'Constraint': [y.name for y in (self._constraintFunctions + self._impConstraintFunctions)],
                                     'Evaluation': np.arange(np.shape(optConstNew)[1])})
 
+    extraOutputs = {}
+    if rlzData is not None:
+      desiredOutputs = [var for var in self._solutionExport.getVars('output') if var not in self._objectiveVar]
+      for var in desiredOutputs:
+        if var in rlzData.data_vars:
+          data = rlzData[var]
+          if 'RAVEN_sample_ID' in data.dims:
+            extraOutputs[var] = np.asarray(data.isel(RAVEN_sample_ID=rankOneIDX).data)
+          else:
+            extraOutputs[var] = np.asarray(data.data)
     self.multiBestPoint = optPointsDic
     self.multiBestFitness = fitSet
     self.multiBestObjective = optObjVal
     self.multiBestConstraint = optConstNew
     self.multiBestRank = optRank
     self.multiBestCD = optCD
+    self.multiBestOutputs = extraOutputs
     return optPointsDic
 
   def _checkAcceptability(self, traj):
