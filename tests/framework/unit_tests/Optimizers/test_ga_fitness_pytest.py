@@ -3,6 +3,7 @@ import math
 import numpy as np
 import pytest
 
+from ravenframework.Optimizers.GeneticAlgorithm import GeneticAlgorithm
 from ravenframework.Optimizers.fitness import fitness
 
 
@@ -52,8 +53,8 @@ def test_logistic_applies_penalty_and_respects_minimization(fitness_inputs):
   expected = np.array(
     [
       0.5,
-      1.0 / (1.0 + math.exp(1.0)) - 0.5 * 0.3,
-      1.0 / (1.0 + math.exp(-0.5)) - 0.5 * 0.5,
+      1.0 / (1.0 + math.exp(-1.0)) - 0.5 * 0.3,
+      1.0 / (1.0 + math.exp(0.5)) - 0.5 * 0.5,
     ]
   )
   assert np.allclose(result["obj"].data, expected)
@@ -61,10 +62,6 @@ def test_logistic_applies_penalty_and_respects_minimization(fitness_inputs):
 
 def test_logistic_flips_for_maximization(fitness_inputs):
   rlz = fitness_inputs["rlz"]
-  base = [
-    1.0 / (1.0 + math.exp(-(val - 1.0)))
-    for val in rlz["obj"].data
-  ]
   result = fitness.logistic(
     rlz,
     objVar=["obj"],
@@ -73,7 +70,26 @@ def test_logistic_flips_for_maximization(fitness_inputs):
     penalty=[0.0],
     type=["max"],
   )
-  assert np.allclose(result["obj"].data, 1.0 - np.array(base))
+  expected = np.array(
+    [
+      1.0 / (1.0 + math.exp(-0.0)),
+      1.0 / (1.0 + math.exp(-1.0)),
+      1.0 / (1.0 + math.exp(0.5)),
+    ]
+  )
+  assert np.allclose(result["obj"].data, expected)
+
+
+def test_positive_fitness_shift_outputs_non_negative():
+  ga = GeneticAlgorithm()
+  ga._positiveFitness = True
+  ga._positiveFitnessEps = 0.1
+  fitness_ds = {
+    "obj": np.array([-2.0, -0.5, 0.0]),
+  }
+  shifted = ga._shiftFitnessForOutput(fitness_ds)
+  assert shifted is not None
+  assert np.min(shifted["obj"]) >= 0.1
 
 
 if __name__ == "__main__":

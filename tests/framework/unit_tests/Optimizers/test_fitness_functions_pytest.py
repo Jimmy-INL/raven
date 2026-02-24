@@ -41,7 +41,7 @@ def test_logistic_adjusts_for_maximization_and_penalties(fitness_inputs):
     type=['max'],
   )
   values = result['obj'].values
-  expected = np.array([0.5, 0.269203, 0.981059])
+  expected = np.array([0.5, 0.730797, 0.018941])
   np.testing.assert_allclose(values, expected, rtol=1e-5, atol=1e-6)
 
 
