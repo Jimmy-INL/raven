@@ -166,15 +166,26 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
       combinedFitnessPairs = [list(pair) for pair in zip(*combinedFitness)]
 
       combinedConstraints = np.vstack([self.matingPop_g.data, currentPop_g.data])
+      combinedObjectives = np.array(combinedObjVals, dtype=float).T
+      minMask = [mode == 'min' for mode in self._minMax]
 
-      combinedRanks = frontUtils.rankNonDominatedFrontiers(
-          np.array(combinedFitnessPairs),
-          isFitness=True)
-
-      combinedCD = frontUtils.crowdingDistance(
-          rank=np.array(combinedRanks),
-          popSize=len(combinedRanks),
-          fitness=np.array(combinedFitnessPairs))
+      if self._constraintHandlingMode == 'dominance':
+        combinedRanks = frontUtils.rankNonDominatedFrontiersWithConstraints(
+            combinedObjectives,
+            combinedConstraints,
+            minMask=minMask)
+        combinedCD = frontUtils.crowdingDistance(
+            rank=np.array(combinedRanks),
+            popSize=len(combinedRanks),
+            fitness=combinedObjectives)
+      else:
+        combinedRanks = frontUtils.rankNonDominatedFrontiers(
+            np.array(combinedFitnessPairs),
+            isFitness=True)
+        combinedCD = frontUtils.crowdingDistance(
+            rank=np.array(combinedRanks),
+            popSize=len(combinedRanks),
+            fitness=np.array(combinedFitnessPairs))
 
       objectiveNames = list(self.matingPopFitness.keys())
       (self.matingPopInputs,
@@ -196,13 +207,25 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
           objectiveNames=objectiveNames)
     else:
       currentPop_fitsbysoln = datasetToDataArray(currentPopFitness, self._objectiveVar).data.tolist()
-      currentPopRanks = frontUtils.rankNonDominatedFrontiers(
-          np.array(currentPop_fitsbysoln),
-          isFitness=True)
-      currentPopCD = frontUtils.crowdingDistance(
-          rank=np.array(currentPopRanks),
-          popSize=len(currentPopRanks),
-          fitness=np.array(currentPop_fitsbysoln))
+      currentObjectives = np.array(currentPop_objvals, dtype=float).T
+      minMask = [mode == 'min' for mode in self._minMax]
+      if self._constraintHandlingMode == 'dominance':
+        currentPopRanks = frontUtils.rankNonDominatedFrontiersWithConstraints(
+            currentObjectives,
+            currentPop_g.data,
+            minMask=minMask)
+        currentPopCD = frontUtils.crowdingDistance(
+            rank=np.array(currentPopRanks),
+            popSize=len(currentPopRanks),
+            fitness=currentObjectives)
+      else:
+        currentPopRanks = frontUtils.rankNonDominatedFrontiers(
+            np.array(currentPop_fitsbysoln),
+            isFitness=True)
+        currentPopCD = frontUtils.crowdingDistance(
+            rank=np.array(currentPopRanks),
+            popSize=len(currentPopRanks),
+            fitness=np.array(currentPop_fitsbysoln))
 
       self.matingPopInputs = currentPopInputs
       self.matingPopFitness = currentPopFitness

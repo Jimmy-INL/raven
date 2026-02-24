@@ -303,7 +303,16 @@ Bayesian Optimizer Example:
 
 """
 # examples Factory
-exampleFactory = {'GradientDescent':minimalGradientDescent,'SimulatedAnnealing':minimalSimulatedAnnealing,'GeneticAlgorithm':minimalGeneticAlgorithm,'BayesianOptimizer':minimalBayesianOptimizer}
+exampleFactory = {
+    'GradientDescent': minimalGradientDescent,
+    'SimulatedAnnealing': minimalSimulatedAnnealing,
+    'GeneticAlgorithm': minimalGeneticAlgorithm,
+    'MultiObjectiveGeneticAlgorithm': minimalGeneticAlgorithm,
+    'NSGAII': minimalGeneticAlgorithm,
+    'NSGA-II': minimalGeneticAlgorithm,
+    'NSGA-III': minimalGeneticAlgorithm,
+    'BayesianOptimizer': minimalBayesianOptimizer
+}
 
 #------------#
 # OPTIMIZERS #

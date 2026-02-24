@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-  Implementation of survivorSelectors (Elitism) for new generation
-  selection process of Genetic Algorithm. Currently the implemented
-  survivorSelectors algorithms are:
+  Implementation of survivor selectors (elitism) for the new generation
+  selection process in the Genetic Algorithm. Currently implemented
+  survivor selector algorithms are:
   1.  ageBased
   2.  fitnessBased
 
@@ -35,7 +35,7 @@ from ...utils.gaUtils import dataArrayToDict, datasetToDataArray
 
 def ageBased(newRlz,**kwargs):
   """
-    ageBased survivorSelection mechanism for new generation selection.
+    Age-based survivor selection mechanism for new generation selection.
     It replaces the oldest parents with the new children regardless of the fitness.
     @ In, newRlz, xr.Dataset, containing either a single realization, or a batch of realizations.
     @ In, kwargs, dict, dictionary of parameters for this mutation method:
@@ -85,9 +85,9 @@ def ageBased(newRlz,**kwargs):
 # @profile
 def fitnessBased(newRlz,**kwargs):
   """
-    fitnessBased survivorSelection mechanism for new generation selection
-    It combines the parents and children/offspring then keeps the fittest individuals
-    to revert to the same population size.
+    Fitness-based survivor selection mechanism for new generation selection.
+    It combines parents and children/offspring and keeps the fittest individuals
+    to maintain the population size.
     @ In, newRlz, xr.Dataset, containing either a single realization, or a batch of realizations.
     @ In, kwargs, dict, dictionary of parameters for this survivor selection method:
           age, list, ages of each chromosome in the population of the previous generation
@@ -100,18 +100,23 @@ def fitnessBased(newRlz,**kwargs):
     @ Out, newAge, list, Ages of each chromosome in the new population.
     @ Out, popObjectiveVal, list, floats of objective values
   """
-  def _toNumericArray(values, default_size):
-    """Convert incoming objective list into a 1-D numpy array of length >= default_size."""
+  def _toNumericArray(values, defaultSize):
+    """
+      Convert incoming objective list into a 1-D numpy array of length >= defaultSize.
+      @ In, values, list or np.ndarray, objective values
+      @ In, defaultSize, int, minimum length of the output array
+      @ Out, array, np.ndarray, 1-D array of length defaultSize (padded with np.nan if needed)
+    """
     if values is None:
-      return np.full(default_size, np.nan)
+      return np.full(defaultSize, np.nan)
     array = np.asarray(values)
     if array.size == 0:
-      return np.full(default_size, np.nan)
+      return np.full(defaultSize, np.nan)
     array = array.reshape(-1)
-    if array.size < default_size:
-      pad = np.full(default_size - array.size, np.nan)
+    if array.size < defaultSize:
+      pad = np.full(defaultSize - array.size, np.nan)
       array = np.concatenate([array, pad])
-    return array[:default_size]
+    return array[:defaultSize]
 
   popSize = np.shape(kwargs['population'])[0]
   popAge = list(kwargs.get('age', [0] * popSize))
@@ -163,11 +168,9 @@ def fitnessBased(newRlz,**kwargs):
 # @profile
 def rankNcrowdingBased(individuals=None, **kwargs):
   """
-    FIXED: NSGA-II compliant survivor selection with proper elitism.
-    Now receives PRE-COMPUTED ranks and crowding distances for the combined population.
-    Selects the best N individuals based on these values.
-
-    Compatible with frontUtils.rankNonDominatedFrontiers and frontUtils.crowdingDistance
+    NSGA-II survivor selection with elitism.
+    Expects pre-computed ranks and crowding distances for the combined population
+    and selects the best N individuals based on these values.
 
     @ In, individuals, UNUSED (kept for compatibility)
     @ In, kwargs, dict, must contain:
@@ -267,8 +270,8 @@ def rankNcrowdingBased(individuals=None, **kwargs):
 
   # Ranks as DataArray
   newRankArray = xr.DataArray(newRanks,
-                              dims=['rank'],
-                              coords={'rank': np.arange(len(newRanks))})
+                              dims=['chromosome'],
+                              coords={'chromosome': np.arange(len(newRanks))})
 
   # Crowding Distance as DataArray
   newCDArray = xr.DataArray(newCD,

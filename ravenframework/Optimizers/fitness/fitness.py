@@ -40,14 +40,14 @@ _defaultPenaltyScaling = 10.0
 # @profile
 def invLinear(rlz, **kwargs):
   r"""
-  Inverse linear fitness method where the fitness value is inversely proportional to the objective function.
+  Inverse linear fitness method where the fitness value scales with objective values and min/max direction.
   For minimization problems:
   1. As the objective decreases (closer to min), the fitness value increases.
   2. As the objective increases (away from the min), the fitness value decreases.
   3. If the solution violates the constraints, the fitness decreases, making it less favorable.
-  For maximization problems, the objective value is negated, inverting the trends.
+  For maximization problems, the sign is flipped so higher objective values yield higher fitness.
   Formula:
-  fitness = -a * obj - b * \Sum_{j=1}^{nConstraint} max(0, -penalty_j)
+  fitness = s * a * obj - b * \Sum_{j=1}^{nConstraint} max(0, -penalty_j), where s=-1 for minimization and s=1 for maximization
   @ In, rlz, xr.Dataset, containing the evaluation of a set of individuals
   @ In, kwargs, dict, dictionary of parameters:
         objVar, list of strings or single string, name(s) of the objective variable(s)
@@ -69,9 +69,10 @@ def invLinear(rlz, **kwargs):
   for i, obj in enumerate(objVar):
       data = np.atleast_1d(rlz[obj].data)  # Objective values
       fitness = np.zeros(data.shape)
+      sign = -1.0 if kwargs['type'][i] == 'min' else 1.0
       for ind in range(data.shape[0]):
-          # Calculate base fitness: Inversely proportional to the objective value
-          fit = -a[i] * data[ind]
+          # Calculate base fitness with direction-aware sign
+          fit = sign * a[i] * data[ind]
           # Apply penalties for constraint violations, if any
           if g is not None and np.any(g.data[ind, :] < 0):  # Violating constraints
               for constInd in range(g.data.shape[1]):
@@ -84,12 +85,12 @@ def invLinear(rlz, **kwargs):
 def feasibleFirst(rlz, **kwargs):
   r"""
   Efficient Parameter-less Feasible First Penalty Fitness method
-  This method is designed for minimization problems. For maximization, the fitness values are negated.
+  This method supports both minimization and maximization objectives.
   For minimization problems:
   1.  As the objective decreases, the fitness value increases.
   2.  As the objective increases, the fitness value decreases.
   3.  If a solution violates constraints, the fitness decreases, making it less favorable.
-  For maximization problems, the objective value is negated, inverting the trends.
+  For maximization problems, the sign is flipped so higher objective values yield higher fitness.
   Reference: Deb, Kalyanmoy. "An efficient constraint handling method for genetic algorithms."
 
   .. math::
@@ -121,15 +122,16 @@ def feasibleFirst(rlz, **kwargs):
   # For each objective
   for i, obj in enumerate(objVar):
       data = np.atleast_1d(rlz[obj].data)
-      worstObj = max(data) # Worst objective value for penalizing violating solutions
+      sign = -1.0 if kwargs['type'][i] == 'min' else 1.0
+      worstObj = max(data) if kwargs['type'][i] == 'min' else min(data)
       fitness = np.zeros(data.shape)
       for ind in range(data.shape[0]):
           # If no contraints or all constraints are satisfied
           if constraintNum == 0 or np.all(g.data[ind, :] >= 0):  # Feasible solutions
-              fit = -a[i] * data[ind]
+              fit = sign * a[i] * data[ind]
           # if constraints are violated
           else:  # Penalize constraint violations
-              fit = -a[i] * worstObj  # Start with the worst objective value
+              fit = sign * a[i] * worstObj  # Start with the worst objective value
               for constInd in range(g.data.shape[1]):
                   violation = max(0, -g.data[ind, constInd])
                   fit -= b[i] * violation
@@ -145,9 +147,9 @@ def logistic(rlz, **kwargs):
   1. As the objective decreases, the fitness value increases.
   2. As the objective increases, the fitness value decreases.
   3. If the solution violates the constraints, the fitness decreases, making it less favorable.
-  For maximization problems, the objective value is negated, inverting the trends.
+  For maximization problems, the exponent sign is flipped so higher objectives yield higher fitness.
   math::
-    fitness = \frac{1}{1 + e^{-scale(x - shift)}} - penalty terms for constraint violations.
+    fitness = \frac{1}{1 + e^{s \times scale(x - shift)}} - penalty terms for constraint violations, where s=1 for minimization and s=-1 for maximization.
   @ In, rlz, xr.Dataset, containing the evaluation of a set of individuals
   @ In, kwargs, dict, dictionary of parameters:
         objVar, list of strings or single string, name(s) of the objective variable(s)
@@ -168,16 +170,17 @@ def logistic(rlz, **kwargs):
       data = np.atleast_1d(rlz[obj].data)  # Objective values
       fitness = np.zeros(data.shape)
       for ind in range(data.shape[0]):
-          # Base logistic fitness calculation
-          denom = 1.0 + np.exp(-scale[i] * (data[ind] - shift[i]))
+          # Base logistic fitness calculation with direction-aware exponent
+          if kwargs['type'][i] == 'max':
+              exponent = -scale[i] * (data[ind] - shift[i])
+          else:
+              exponent = scale[i] * (data[ind] - shift[i])
+          denom = 1.0 + np.exp(exponent)
           fit = 1.0 / denom
           # Apply penalties for constraint violations, if any
           if g is not None and np.any(g.data[ind, :] < 0):  # Constraint violation
               for constInd in range(g.data.shape[1]):
                   fit -= penalty[i] * max(0, -g.data[ind, constInd])
-          # Adjust for maximization problems by negating the fitness value
-          if kwargs['type'][i] == 'max':
-              fit = 1.0 - fit  # Adjust the logistic fitness for maximization
           fitness[ind] = fit
       # Store fitness in the dataset
       fitnessSet[obj] = xr.DataArray(fitness, dims=['chromosome'], coords={'chromosome': np.arange(len(data))})

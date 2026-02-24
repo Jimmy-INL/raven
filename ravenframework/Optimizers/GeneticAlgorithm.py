@@ -355,6 +355,9 @@ class GeneticAlgorithm(RavenSampled):
     self._repairInstance = None                                  # instance of repair
     self._canHandleMultiObjective = True                         # boolean indicator whether optimization is a sinlge-objective problem or a multi-objective problem
     self._normalizeFitness = False
+    self._constraintHandlingMode = 'penalty'                     # 'penalty' (fitness-based) or 'dominance' (constraint-domination)
+    self._positiveFitness = False                                # shift fitness output to be non-negative
+    self._positiveFitnessEps = 0.0                               # minimum fitness value after shift
 
   ##########################
   # Initialization Methods #
@@ -520,6 +523,17 @@ class GeneticAlgorithm(RavenSampled):
                   \end{itemize}""")
     GAparams.addSub(survivorSelection)
 
+    constraintHandling = InputData.parameterInputFactory('constraintHandling', strictMode=True,
+        contentType=InputTypes.makeEnumType('constraintHandling','constraintHandlingType',['penalty','dominance']),
+        printPriority=108,
+        descr=r"""Defines how constraints influence multi-objective ranking:
+                  \begin{itemize}
+                    \item \textit{penalty} - Constraints are folded into fitness values (penalty-based).
+                    \item \textit{dominance} - Uses Deb's constraint-domination: feasible solutions dominate infeasible ones,
+                    and infeasible solutions are ranked by total violation.
+                  \end{itemize}""")
+    GAparams.addSub(constraintHandling)
+
     # Fitness
     fitness = InputData.parameterInputFactory('fitness', strictMode=True,
         contentType=InputTypes.StringType,
@@ -529,14 +543,15 @@ class GeneticAlgorithm(RavenSampled):
                      True,
                      descr=r"""You can choose one of the fitness options listed below:
                   \begin{itemize}
-                        \item \textit{invLinear} - It assigns fitness values inversely proportional to the individual's objective function values,
-                        prioritizing solutions with lower objective function values (i.e., minimization) for selection and reproduction. It suppoort only single-objective optimization problem.\\\\
-                        $fitness = -a \times obj - b \times \sum_{j=1}^{nConstraint} max(0,-penalty_{j}) $\\
+                        \item \textit{invLinear} - It assigns fitness values proportional to the objective function values with sign
+                        determined by min/max, prioritizing better objective values for selection and reproduction. It suppoort only single-objective optimization problem.\\\\
+                        $fitness = s \times a \times obj - b \times \sum_{j=1}^{nConstraint} max(0,-penalty_{j})$, where $s=-1$ for minimization and $s=1$ for maximization.\\
                         where j represents an index of objects
                         \\
 
-                        \item \textit{logistic} - It applies a logistic function to transform raw objective function values into fitness scores.  It suppoort only single-objective optimization problem.\\\\
-                        $fitness = \frac{1}{1+e^{a\times(obj-b)}}$\\
+                        \item \textit{logistic} - It applies a logistic function to transform raw objective function values into fitness scores.
+                        It supports min/max by flipping the exponent sign. It suppoort only single-objective optimization problem.\\\\
+                        $fitness = \frac{1}{1+e^{s\times a \times (obj-b)}}$, where $s=1$ for minimization and $s=-1$ for maximization.\\
                         \item \textit{feasibleFirst} - It prioritizes solutions that meet constraints by assigning higher fitness scores to feasible solutions,
 
                         encouraging the evolution of individuals that satisfy the problem's constraints.  It suppoort single-and multi-objective optimization problem.\\\\
@@ -562,6 +577,16 @@ class GeneticAlgorithm(RavenSampled):
         printPriority=108,
         descr=r""" shift: in case of logistic fitness, this is the shift in the exponential function for the onjective(s). \default{list of zeros}""")
     fitness.addSub(shift)
+    positiveFitness = InputData.parameterInputFactory('positiveFitness', strictMode=False,
+        contentType=InputTypes.BoolType,
+        printPriority=108,
+        descr=r"""If True, fitness values in the output are shifted so the minimum per objective is non-negative.""")
+    fitness.addSub(positiveFitness)
+    positiveFitnessEps = InputData.parameterInputFactory('positiveFitnessEps', strictMode=False,
+        contentType=InputTypes.FloatType,
+        printPriority=108,
+        descr=r"""Minimum fitness value after shifting when positiveFitness is enabled. \default{0.0}""")
+    fitness.addSub(positiveFitnessEps)
     GAparams.addSub(fitness)
     specs.addSub(GAparams)
 
@@ -688,6 +713,9 @@ class GeneticAlgorithm(RavenSampled):
       self.raiseAnError(IOError, f'(rankNcrowdingBased) in <survivorSelection> only supports Multi-objective Optimization (i.e., number of objectives in <objective> is greater than one).')
     if self._isMultiObjective and self._survivorSelectionType != 'rankNcrowdingBased':
       self.raiseAnError(IOError, f'The only option supported in <survivorSelection> for Multi-objective Optimization is (rankNcrowdingBased).')
+    constraintHandlingNode = gaParamsNode.findFirst('constraintHandling')
+    if constraintHandlingNode is not None:
+      self._constraintHandlingMode = constraintHandlingNode.value
 
     ####################################################################################
     # fitness node                                                                     #
@@ -700,6 +728,12 @@ class GeneticAlgorithm(RavenSampled):
     else:
       self._penaltyCoeff = fitnessNode.findFirst('b').value if fitnessNode.findFirst('b') else None
       self._objCoeff = fitnessNode.findFirst('a').value if fitnessNode.findFirst('a') else None
+    positiveFitnessNode = fitnessNode.findFirst('positiveFitness')
+    if positiveFitnessNode is not None:
+      self._positiveFitness = bool(positiveFitnessNode.value)
+    positiveFitnessEpsNode = fitnessNode.findFirst('positiveFitnessEps')
+    if positiveFitnessEpsNode is not None:
+      self._positiveFitnessEps = float(positiveFitnessEpsNode.value)
     ####################################################################################
     # constraint node                                                                  #
     ####################################################################################
@@ -729,6 +763,14 @@ class GeneticAlgorithm(RavenSampled):
           self._requiredPersistence = sub.value
         else:
           self._convergenceCriteria[sub.name] = sub.value
+    if 'objective' in self._convergenceCriteria:
+      objTargets = self._convergenceCriteria['objective']
+      if not isinstance(objTargets, (list, tuple, np.ndarray)):
+        objTargets = [objTargets]
+        self._convergenceCriteria['objective'] = objTargets
+      expected = len(self._objectiveVar) if isinstance(self._objectiveVar, (list, tuple)) else 1
+      if len(objTargets) != expected:
+        self.raiseAnError(IOError, f'Convergence <objective> length ({len(objTargets)}) does not match the number of objectives ({expected}).')
     if not self._convergenceCriteria:
       self.raiseAWarning('No convergence criteria given; using defaults.')
       self._convergenceCriteria['objective'] = 1e-6
@@ -901,6 +943,8 @@ class GeneticAlgorithm(RavenSampled):
             currentPop_g[i][j] = 0.0
 
     # Step 5: Compute fitness for offspring Q(t)
+    # Objectives are already normalized to minimization via _objMult in RavenSampled.
+    # Pass all-min types to avoid double-sign handling inside fitness functions.
     currentPopFitness = self._fitnessInstance(norm_rlz,
                                                objVar=self._objectiveVar,
                                                a=self._objCoeff,
@@ -908,7 +952,7 @@ class GeneticAlgorithm(RavenSampled):
                                                penalty=None,
                                                constraintFunction=currentPop_g,
                                                constraintNum=self._numOfConst,
-                                               type=self._minMax)
+                                               type=['min'] * len(self._objectiveVar))
 
     if self._activeTraj:
       # ============================================================
@@ -1239,6 +1283,7 @@ class GeneticAlgorithm(RavenSampled):
       @ In, CD, xr.DataArray, optional, crowding distance for multi-objective
     """
     self.raiseADebug(f'Trajectory {traj} iteration {info["step"]} resolving new Generation (population) ...')
+    fitnessForOutput = self._shiftFitnessForOutput(fitness)
     # note the collection of the opt point
     self._stepTracker[traj]['opt'] = (rlz, info)
     acceptable = 'accepted' if self.counter > 1 else 'first'
@@ -1266,8 +1311,15 @@ class GeneticAlgorithm(RavenSampled):
           if self.matingPopAges is not None:
             rlzDict['age'] = self.matingPopAges[i]
           # FIXED: Use matingPopFitness instead of self.fitness
-          for ind, fitName in enumerate(list(fitness.keys() if isinstance(fitness, dict) else self.matingPopFitness.keys())):
-            rlzDict['FitnessEvaluation_'+fitName] = (fitness if isinstance(fitness, dict) else self.matingPopFitness)[fitName].data[i]
+          fitnessSource = fitnessForOutput if fitnessForOutput is not None else fitness
+          if isinstance(fitnessSource, dict):
+            fitnessKeys = list(fitnessSource.keys())
+          else:
+            fitnessKeys = list(self.matingPopFitness.keys())
+          for ind, fitName in enumerate(fitnessKeys):
+            fitContainer = (fitnessSource if isinstance(fitnessSource, dict) else self.matingPopFitness)[fitName]
+            fitValues = fitContainer.data if hasattr(fitContainer, 'data') else np.asarray(fitContainer)
+            rlzDict['FitnessEvaluation_'+fitName] = fitValues[i]
           # FIXED: Use matingPop_g instead of self.constraintsV
           for ind, consName in enumerate([y.name for y in (self._constraintFunctions + self._impConstraintFunctions)]):
             rlzDict['ConstraintEvaluation_'+consName] = g.data[i,ind]
@@ -1294,10 +1346,16 @@ class GeneticAlgorithm(RavenSampled):
           # Survivor fitness (single objective has a single fitness variable)
           fitnessNames = list(self.matingPopFitness.keys()) if isinstance(self.matingPopFitness, xr.Dataset) else []
           if fitnessNames:
-            rlzDict['fitness'] = float(self.matingPopFitness[fitnessNames[0]].data[i])
+            fitnessSource = fitnessForOutput if fitnessForOutput is not None else self.matingPopFitness
+            fitContainer = fitnessSource[fitnessNames[0]]
+            fitValues = fitContainer.data if hasattr(fitContainer, 'data') else np.asarray(fitContainer)
+            rlzDict['fitness'] = float(fitValues[i])
           elif isinstance(self.matingPopFitness, dict):
             firstKey = next(iter(self.matingPopFitness))
-            rlzDict['fitness'] = float(self.matingPopFitness[firstKey].data[i])
+            fitnessSource = fitnessForOutput if fitnessForOutput is not None else self.matingPopFitness
+            fitContainer = fitnessSource[firstKey]
+            fitValues = fitContainer.data if hasattr(fitContainer, 'data') else np.asarray(fitContainer)
+            rlzDict['fitness'] = float(fitValues[i])
           # Track survivor age and batchId if available
           if self.matingPopAges is not None:
             rlzDict['age'] = self.matingPopAges[i]
@@ -1330,6 +1388,45 @@ class GeneticAlgorithm(RavenSampled):
         bestRlz['fitness'] = self.bestFitness
         bestRlz.update(self.bestPoint)
       self._optPointHistory[traj].append((bestRlz, info))
+
+  def _shiftFitnessForOutput(self, fitness):
+    """
+      Shift fitness values to be non-negative for output purposes.
+      @ In, fitness, xr.Dataset | xr.DataArray | dict | np.ndarray | list, fitness container
+      @ Out, shifted, same type as input or None if shifting is disabled
+    """
+    if not self._positiveFitness or fitness is None:
+      return None
+
+    eps = float(self._positiveFitnessEps or 0.0)
+
+    def _shift_array(array):
+      data = np.asarray(array, dtype=float)
+      if data.size == 0:
+        return data
+      finite = data[np.isfinite(data)]
+      if finite.size == 0:
+        return data
+      min_val = float(np.min(finite))
+      shift = 0.0 if min_val >= eps else (eps - min_val)
+      return data + shift
+
+    if isinstance(fitness, xr.Dataset):
+      shifted = xr.Dataset()
+      for name, data in fitness.data_vars.items():
+        shifted[name] = xr.DataArray(_shift_array(data.data), dims=data.dims, coords=data.coords)
+      return shifted
+    if isinstance(fitness, xr.DataArray):
+      return xr.DataArray(_shift_array(fitness.data), dims=fitness.dims, coords=fitness.coords)
+    if isinstance(fitness, dict):
+      shifted = {}
+      for key, value in fitness.items():
+        if hasattr(value, 'data'):
+          shifted[key] = xr.DataArray(_shift_array(value.data), dims=value.dims, coords=value.coords)
+        else:
+          shifted[key] = _shift_array(value)
+      return shifted
+    return _shift_array(fitness)
 
   def _collectOptPoint(self, rlz, fitness, objectiveVal, g, population=None):
     """
@@ -1435,7 +1532,19 @@ class GeneticAlgorithm(RavenSampled):
       else:
         currentObj = float(objectiveArray[:, bestIdx][0])
 
-    currentFit = float(fitnessScalar[bestIdx])
+    fitnessForOutput = self._shiftFitnessForOutput(fitness)
+    if fitnessForOutput is not None:
+      if isinstance(fitnessForOutput, xr.Dataset):
+        currentFit = float(fitnessForOutput[objNames[0]].data[bestIdx])
+      elif isinstance(fitnessForOutput, xr.DataArray):
+        currentFit = float(fitnessForOutput.data[bestIdx])
+      elif isinstance(fitnessForOutput, dict):
+        fitData = fitnessForOutput[objNames[0]]
+        currentFit = float(fitData.data[bestIdx] if hasattr(fitData, 'data') else fitData[bestIdx])
+      else:
+        currentFit = float(np.atleast_1d(fitnessForOutput)[bestIdx])
+    else:
+      currentFit = float(fitnessScalar[bestIdx])
 
     if self.counter == 1:
       point.update(gOfBest)
@@ -1498,6 +1607,7 @@ class GeneticAlgorithm(RavenSampled):
       else:
         fitSet[i] = data
       count = count + 1
+    fitSetOutput = self._shiftFitnessForOutput(fitSet)
     optConstraintsV = constraintsV.data[rankOneIDX]
     optRank = rank.data[rankOneIDX]
     optCD = CD.data[rankOneIDX]
@@ -1511,7 +1621,7 @@ class GeneticAlgorithm(RavenSampled):
                                     'Evaluation': np.arange(np.shape(optConstNew)[1])})
 
     self.multiBestPoint = optPointsDic
-    self.multiBestFitness = fitSet
+    self.multiBestFitness = fitSetOutput if fitSetOutput is not None else fitSet
     self.multiBestObjective = optObjVal
     self.multiBestConstraint = optConstNew
     self.multiBestRank = optRank

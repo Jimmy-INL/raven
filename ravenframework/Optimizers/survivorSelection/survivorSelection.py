@@ -15,7 +15,7 @@
   Implementation of survivorSelection step for new generation
   selection process in Genetic Algorithm.
 
-  Created Apr 3, 2024
+  Created Apr,3,2024
   @authors: Mohammad Abdo, Junyung Kim
 """
 # External Modules----------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ def singleObjSurvivorSelect(self, info, rlz, traj, offspring, offspringFitness, 
     @ In, info, dict, dictionary of information
     @ In, rlz, xr.Dataset, dictionary of realizations
     @ In, traj, int, trajectory identifier
-    @ In, offspring, xr.DataArray, offspring individuals
+    @ In, offspring, xr.DataArray, offspring indiciduals
     @ In, offspringFitness, xr.Dataset, fitness of offspring
     @ In, objectiveVal, list, objective values of offspring
     @ In, g, xr.DataArray, constraint data
@@ -73,16 +73,14 @@ def singleObjSurvivorSelect(self, info, rlz, traj, offspring, offspringFitness, 
 
 def multiObjSurvivorSelect(self, info, rlz, traj, offSprings, offSpringsFitness, objectiveVal, g):
   """
-    Process of selecting survivors for multi-objective problems.
-    Multi-objective survivor selection is handled by the GeneticAlgorithm flow;
-    this stub is kept for compatibility with older call sites.
+    process of selecting survivors for multi-objective problems
     @ In, self, instance of GeneticAlgorithm. Also information to return is added to this
     @ In, info, dict, dictionary of information
     @ In, rlz, dict, dictionary of realizations (including values of all objectives)
     @ In, traj, dict, dictionary of trajectories
     @ In, offSprings, list, list of offspring individuals
-    @ In, offSpringsFitness, list, list of fitness values for offspring individuals
+    @ In, offSpringFitness, list, list of fitness values for offspring individuals
     @ In, objectiveVal, list, values of the objectives (for ranking and crowding distance calculation)
     @ In, g, xr.DataArray, constraint data
   """
-  pass
+pass

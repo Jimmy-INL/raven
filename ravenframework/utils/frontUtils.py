@@ -108,6 +108,99 @@ def rankNonDominatedFrontiers(data, isFitness=False):
   return nonDominatedRank.tolist()
 
 
+def _applyMinMaxMask(objectives, minMask):
+  """
+    Convert objectives to a pure minimization form using the provided min/max mask.
+    @ In, objectives, np.ndarray, shape (nPoints, nObjectives)
+    @ In, minMask, list(bool) or None, True means minimize, False means maximize
+    @ Out, transformed, np.ndarray, objectives transformed to minimize all dimensions
+  """
+  transformed = np.asarray(objectives, dtype=float)
+  if minMask is None:
+    return transformed
+  if len(minMask) != transformed.shape[1]:
+    raise IOError("minMask length does not match objective dimension")
+  for idx, minimize in enumerate(minMask):
+    if not minimize:
+      transformed[:, idx] = -1.0 * transformed[:, idx]
+  return transformed
+
+
+def rankNonDominatedFrontiersObjectives(objectives, minMask=None):
+  """
+    Rank non-dominated fronts for objective values with mixed min/max directions.
+    @ In, objectives, np.ndarray, shape (nPoints, nObjectives)
+    @ In, minMask, list(bool) or None, True means minimize, False means maximize
+    @ Out, ranks, list(int), non-dominated rank for each point
+  """
+  minimized = _applyMinMaxMask(objectives, minMask)
+  return rankNonDominatedFrontiers(minimized, isFitness=False)
+
+
+def rankNonDominatedFrontiersWithConstraints(objectives, constraints, minMask=None):
+  """
+    Rank non-dominated fronts using constraint-domination (Deb 2000).
+    Feasible solutions dominate infeasible ones. Among infeasible, smaller total
+    constraint violation is preferred. Among feasible, objective dominance applies.
+    @ In, objectives, np.ndarray, shape (nPoints, nObjectives)
+    @ In, constraints, np.ndarray or xr.DataArray, shape (nPoints, nConstraints)
+    @ In, minMask, list(bool) or None, True means minimize, False means maximize
+    @ Out, ranks, list(int), non-dominated rank for each point
+  """
+  obj = _applyMinMaxMask(objectives, minMask)
+  if constraints is None:
+    constraint_vals = np.zeros(obj.shape[0], dtype=float)
+  else:
+    g = np.asarray(constraints)
+    if g.size == 0:
+      constraint_vals = np.zeros(obj.shape[0], dtype=float)
+    else:
+      constraint_vals = np.sum(np.maximum(0.0, -g), axis=1)
+  feasible = constraint_vals <= 0.0
+
+  def dominates(i, j):
+    if feasible[i] and not feasible[j]:
+      return True
+    if not feasible[i] and feasible[j]:
+      return False
+    if not feasible[i] and not feasible[j]:
+      if constraint_vals[i] < constraint_vals[j]:
+        return True
+      return False
+    return np.all(obj[i] <= obj[j]) and np.any(obj[i] < obj[j])
+
+  n_points = obj.shape[0]
+  dominates_list = [set() for _ in range(n_points)]
+  dominated_count = np.zeros(n_points, dtype=int)
+  fronts = []
+
+  for p in range(n_points):
+    for q in range(n_points):
+      if p == q:
+        continue
+      if dominates(p, q):
+        dominates_list[p].add(q)
+      elif dominates(q, p):
+        dominated_count[p] += 1
+
+  current_front = [idx for idx in range(n_points) if dominated_count[idx] == 0]
+  rank = np.zeros(n_points, dtype=int)
+  front_rank = 1
+  while current_front:
+    fronts.append(current_front)
+    next_front = []
+    for p in current_front:
+      rank[p] = front_rank
+      for q in dominates_list[p]:
+        dominated_count[q] -= 1
+        if dominated_count[q] == 0:
+          next_front.append(q)
+    front_rank += 1
+    current_front = next_front
+
+  return rank.tolist()
+
+
 def crowdingDistance(rank, popSize, fitness):
   """
     Method designed to calculate the crowding distance for each front.
