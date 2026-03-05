@@ -924,6 +924,9 @@ reduced by the previously sampled values.
 After, the sampler has generated values for all variables, the distribution is
 resetted (i.e., the set of values that can be sampled is returned to $N$).
 In case the ``with replacement'' strategy is used, the distribution samples always from the complete set of specified $N$ values.
+The support can be defined either by an explicit \xmlNode{values} list, by bounds plus \xmlNode{nPoints},
+or by bounds plus \xmlNode{step}. If \xmlNode{nPoints} and \xmlNode{step} are both omitted,
+the bounds must be integer-valued and the support is all integers between them (inclusive).
 
 \specBlock{a}{UniformDiscrete}
 %
@@ -936,9 +939,11 @@ In case the ``with replacement'' strategy is used, the distribution samples alwa
 \vspace{-5mm}
 \subnodeIntro
 \begin{itemize}
-  \item \xmlNode{lowerBound}, \xmlDesc{float, required parameter}, lower bound.
-  \item \xmlNode{upperBound}, \xmlDesc{float, required parameter}, upper bound.
-  \item \xmlNode{nPoints},    \xmlDesc{integer, optional parameter}, number of points between lower and upper bound
+  \item \xmlNode{lowerBound}, \xmlDesc{float, conditionally required parameter}, lower bound; required unless \xmlNode{values} is provided.
+  \item \xmlNode{upperBound}, \xmlDesc{float, conditionally required parameter}, upper bound; required unless \xmlNode{values} is provided.
+  \item \xmlNode{nPoints},    \xmlDesc{integer, optional parameter}, number of points between lower and upper bound (mutually exclusive with \xmlNode{step}).
+  \item \xmlNode{step},       \xmlDesc{float, optional parameter}, spacing between adjacent points from lower to upper bound; must evenly divide the range (mutually exclusive with \xmlNode{nPoints}).
+  \item \xmlNode{values},     \xmlDesc{comma-separated float list, optional parameter}, explicit support values (mutually exclusive with \xmlNode{lowerBound}, \xmlNode{upperBound}, \xmlNode{nPoints}, and \xmlNode{step}).
   \item \xmlNode{strategy},   \xmlDesc{string,  required parameter}, type of sampling strategy
   (withReplacement or withoutReplacement).
   %
@@ -949,8 +954,13 @@ Example:
 <Distributions>
   ...
     <UniformDiscrete name="UD_dist">
-      <lowerBound>3</lowerBound>
-      <upperBound>8</upperBound>
+      <lowerBound>2.0</lowerBound>
+      <upperBound>2.5</upperBound>
+      <step>0.1</step>
+      <strategy>withReplacement</strategy>
+    </UniformDiscrete>
+    <UniformDiscrete name="UD_list_dist">
+      <values>2.0, 2.5, 7.25</values>
       <strategy>withReplacement</strategy>
     </UniformDiscrete>
   ...

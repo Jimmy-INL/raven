@@ -157,7 +157,7 @@ class EQMonteCarlo(Sampler):
         rvsnum = genome[i]
         for kkey in key.split(','):
           self.values[kkey] = np.atleast_1d(rvsnum)[0]
-        self.inputInfo['SampledVarsPb'][key] = self.distDict[key].pdf(rvsnum)
+        self.inputInfo['SampledVarsPb'][key] = self.distDict[key].getSampleProbability(rvsnum)
         self.inputInfo['ProbabilityWeight-' + key] = 1.
 
 
