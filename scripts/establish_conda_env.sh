@@ -161,76 +161,89 @@ function install_libraries()
 
 function create_libraries()
 {
-  # TODO there's a lot of redundancy here with install_libraries; maybe this can be consolidated?
-  if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries ...; fi
-  if [[ "$INSTALL_MANAGER" == "CONDA" ]];
-  then
-    # conda-forge
-    if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries from conda-forge ...; fi
-    #In order to install the libraries, we need a working python command
-    # Check PYTHON_COMMAND and then some other possibilities to find one
-    # that is in the path with command -v
-    if command -v $PYTHON_COMMAND; then
-        #The PYTHON_COMMAND exists
-        WORKING_PYTHON_COMMAND=$PYTHON_COMMAND
-    elif command -v python; then
-        #python exists
-        WORKING_PYTHON_COMMAND=python
-    elif command -v python3; then
-        #python3 exists
-        WORKING_PYTHON_COMMAND=python3
-    else
-        echo Neither PYTHON_COMMAND: $PYTHON_COMMAND nor python nor python3 are available
-        echo Please fix this and run again.
-        exit
-    fi
-    if [[ $ECE_VERBOSE == 0 && $WORKING_PYTHON_COMMAND != $PYTHON_COMMAND ]]; then
-        echo ... temporarily using Python $WORKING_PYTHON_COMMAND for installation
-    fi
-    if [[ $USE_MAMBA == TRUE ]]; then
-        local PRECOMMAND=`$WORKING_PYTHON_COMMAND ${RAVEN_LIB_HANDLER} ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action create --subset mamba`" $SET_PYTHON"
-        if [[ $ECE_VERBOSE == 0 ]]; then echo ... conda-forge pre-command: $PRECOMMAND; fi
-        ${PRECOMMAND}
-        local COMMAND=`echo $($WORKING_PYTHON_COMMAND ${RAVEN_LIB_HANDLER} ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action install --subset forge --no-name)`
-        activate_env
-        local MCOMMAND=${COMMAND/#conda /mamba }
-        if [[ $ECE_VERBOSE == 0 ]]; then echo ... conda-forge command: ${MCOMMAND}; fi
-        ${MCOMMAND}
-    else
-        local COMMAND=`echo $($WORKING_PYTHON_COMMAND ${RAVEN_LIB_HANDLER} ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action create --subset forge)`
-        if [[ $ECE_VERBOSE == 0 ]]; then echo ... conda-forge command: ${COMMAND}; fi
-        ${COMMAND}
-    fi
-    # pip only
-    activate_env
-    if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries from PIP-ONLY ...; fi
-    local COMMAND=`echo $($WORKING_PYTHON_COMMAND ${RAVEN_LIB_HANDLER}  ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action install --subset pip)`
-    if [[ "$PROXY_COMM" != "" ]]; then COMMAND=`echo $COMMAND --proxy $PROXY_COMM`; fi
-    if [[ $ECE_VERBOSE == 0 ]]; then echo ...pip-only command: ${COMMAND}; fi
-    ${COMMAND}
-    # pyomo only
-    if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries from pyomo ...; fi
-    local COMMAND=`echo $($WORKING_PYTHON_COMMAND ${RAVEN_LIB_HANDLER}  ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action install --subset pyomo)`
-    if [[ $ECE_VERBOSE == 0 ]]; then echo ... pyomo command: ${COMMAND}; fi
-    if [[ ${COMMAND} == *"pyomo-extensions"* ]];
-    then
-      pyomo download-extensions || echo "Pyomo download failed"
-      pyomo build-extensions || echo "Pyomo build failed"
-    fi
-  else
-    #pip create virtual enviroment
-    local COMMAND="$PYTHON_COMMAND -m venv $PIP_ENV_LOCATION"
-    if [[ $ECE_VERBOSE == 0 ]]; then echo ... virtual enviroment command: ${COMMAND}; fi
-    ${COMMAND}
-    # activate the enviroment
-    activate_env
-    # pip install
-    if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries from pip ...; fi
-    local COMMAND=`echo $($PYTHON_COMMAND ${RAVEN_LIB_HANDLER}  ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} pip --action install)`
-    if [[ "$PROXY_COMM" != "" ]]; then COMMAND=`echo $COMMAND --proxy $PROXY_COMM`; fi
-    if [[ $ECE_VERBOSE == 0 ]]; then echo ... pip command: ${COMMAND}; fi
-    ${COMMAND}
-  fi
+# TODO there's a lot of redundancy here with install_libraries; maybe this can be consolidated?
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries ...; fi
+if [[ "$INSTALL_MANAGER" == "CONDA" ]];
+then
+# conda-forge
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries from conda-forge ...; fi
+#In order to install the libraries, we need a working python command
+# Check PYTHON_COMMAND and then some other possibilities to find one
+# that is in the path with command -v
+if command -v $PYTHON_COMMAND; then
+#The PYTHON_COMMAND exists
+WORKING_PYTHON_COMMAND=$PYTHON_COMMAND
+elif command -v python; then
+#python exists
+WORKING_PYTHON_COMMAND=python
+elif command -v python3; then
+#python3 exists
+WORKING_PYTHON_COMMAND=python3
+else
+echo Neither PYTHON_COMMAND: $PYTHON_COMMAND nor python nor python3 are available
+echo Please fix this and run again.
+exit
+fi
+if [[ $ECE_VERBOSE == 0 && $WORKING_PYTHON_COMMAND != $PYTHON_COMMAND ]]; then
+echo ... temporarily using Python $WORKING_PYTHON_COMMAND for installation
+fi
+
+# Define the bootstrap packages needed to prevent the 'numpy' crash during installation
+BOOTSTRAP_LIBS="numpy pandas scipy xarray"
+
+if [[ $USE_MAMBA == TRUE ]]; then
+# We generate the command via the handler, then append bootstrap libs in the shell
+# to avoid 'unrecognized arguments' errors in the Python library_handler.py
+local GENERATED_COMMAND=`$WORKING_PYTHON_COMMAND ${RAVEN_LIB_HANDLER} ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action create --subset mamba`" $SET_PYTHON"
+local FINAL_COMMAND="${GENERATED_COMMAND} ${BOOTSTRAP_LIBS}"
+
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... conda-forge pre-command: ${FINAL_COMMAND}; fi
+${FINAL_COMMAND}
+
+local COMMAND=`echo $($WORKING_PYTHON_COMMAND ${RAVEN_LIB_HANDLER} ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action install --subset forge --no-name)`
+activate_env
+local MCOMMAND=${COMMAND/#conda /mamba } #Replace conda at start with mamba
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... conda-forge command: ${MCOMMAND}; fi
+${MCOMMAND}
+else
+# Non-mamba path: same logic, append bootstrap libs to the generated command
+local GENERATED_COMMAND=`$WORKING_PYTHON_COMMAND ${RAVEN_LIB_HANDLER} ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action create --subset forge`
+local FINAL_COMMAND="${GENERATED_COMMAND} ${BOOTSTRAP_LIBS}"
+
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... conda-forge command: ${FINAL_COMMAND}; fi
+${FINAL_COMMAND}
+fi
+
+# pip only
+activate_env
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries from PIP-ONLY ...; fi
+local COMMAND=`echo $($PYTHON_COMMAND ${RAVEN_LIB_HANDLER}  ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action install --subset pip)`
+if [[ "$PROXY_COMM" != "" ]]; then COMMAND=`echo $COMMAND --proxy $PROXY_COMM`; fi
+if [[ $ECE_VERBOSE == 0 ]]; then echo ...pip-only command: ${COMMAND}; fi
+${COMMAND}
+# pyomo only
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries from pyomo ...; fi
+local COMMAND=`echo $($PYTHON_COMMAND ${RAVEN_LIB_HANDLER}  ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} conda --action install --subset pyomo)`
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... pyomo command: ${COMMAND}; fi
+if [[ ${COMMAND} == *"pyomo-extensions"* ]]; # If pip package is created for pynumero, delete this command and add to pip dependencies
+then
+pyomo download-extensions || echo "Pyomo download failed"
+pyomo build-extensions || echo "Pyomo build failed"
+fi
+else
+#pip create virtual enviroment
+local COMMAND="$PYTHON_COMMAND -m venv $PIP_ENV_LOCATION"
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... virtual enviroment command: ${COMMAND}; fi
+${COMMAND}
+# activate the enviroment
+activate_env
+# pip install
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... Installing libraries from pip ...; fi
+local COMMAND=`echo $($PYTHON_COMMAND ${RAVEN_LIB_HANDLER}  ${INSTALL_OPTIONAL} ${OSOPTION} ${INSTALL_CODE_INTERFACE_DEPS} pip --action install)`
+if [[ "$PROXY_COMM" != "" ]]; then COMMAND=`echo $COMMAND --proxy $PROXY_COMM`; fi
+if [[ $ECE_VERBOSE == 0 ]]; then echo ... pip command: ${COMMAND}; fi
+${COMMAND}
+fi
 }
 
 function display_usage()

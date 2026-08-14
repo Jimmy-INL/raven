@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2017 Battelle Energy Alliance, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -221,18 +222,20 @@ def load_average_adapter(function):
 
 def get_test_lists(directories):
   """
-    Returns a list of all the files named tests under the directory
-    @ In, directory, string, the directory to start at
-    @ Out, dir_test_list, list, the files named tests
+  Returns a list of all the files/directories named tests under the directory
+  @ In, directory, string, the directory to start at
+  @ Out, dir_test_list, list, the files/dirs named tests
   """
   dir_test_list = []
   found = 0
   for directory in directories:
-    for root, _, files in os.walk(directory):
-      if 'tests' in files:
+    # Added followlinks=True to support symlinks/worktrees
+    for root, dirs, files in os.walk(directory, followlinks=True):
+      # Check both 'files' and 'dirs' to support standard directory structures
+      if 'tests' in files or 'tests' in dirs:
         dir_test_list.append((root, os.path.join(root, 'tests')))
-    print('rook: found {} test dirs under "{}" ...'.format(len(dir_test_list) - found, directory))
-    found = len(dir_test_list)
+  print('rook: found {} test dirs under "{}" ...'.format(len(dir_test_list) - found, directory))
+  found = len(dir_test_list)
   return dir_test_list
 
 def get_testers_and_differs(directory):

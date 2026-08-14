@@ -26,10 +26,24 @@ from itertools import cycle
 import numpy as np
 import numpy.ma as ma
 import matplotlib
+# 1) If user explicitly requested a backend, respect it.
+force_backend = os.environ.get("RAVEN_BACKEND") or os.environ.get("MPLBACKEND")
+
+if force_backend:
+    matplotlib.use(force_backend)
+else:
+    # 2) If there is no GUI display, fall back to a non-interactive backend.
+    #    This covers headless HPC or SSH without X11 forwarding.
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 
 from ...utils import utils, mathUtils
 from .PlotInterface import PlotInterface
+import matplotlib
+matplotlib.use("Agg")
+
 
 display = utils.displayAvailable()
 
@@ -843,6 +857,7 @@ class GeneralPlot(PlotInterface):
         needed for the actual step.
       @ Out, None
     """
+    self.fig, self.ax = plt.subplots(num=self.name)
     if self.fig is not None:
       self.fig = None
     if self.ax is not None:
