@@ -1,0 +1,101 @@
+\subsubsection{SobolIndices}
+\label{SobolIndices}
+The \textbf{SobolIndices} PostProcessor computes variance-based (Sobol') global
+sensitivity indices from a model output set produced by the \textbf{Saltelli}
+sampler (see Section~\ref{subsubsubsec:Saltelli}). Given the Saltelli
+$A / B / AB_i$ cross-sample design, it estimates, for each \xmlNode{targets}
+response and each \xmlNode{features} input:
+\begin{itemize}
+  \item the \emph{first-order} index $S_i$ (the fraction of the output variance
+        explained by input $i$ acting alone), using the Saltelli-2010 estimator
+        \[ S_i = \frac{\frac{1}{N}\sum_{j=1}^{N} B_j\left(AB^{(i)}_j - A_j\right)}
+                       {\mathrm{Var}(Y)}; \]
+  \item the \emph{total-order} index $S_{T_i}$ (the fraction of the output
+        variance explained by input $i$ including all its interactions), using
+        the Jansen-1999 estimator
+        \[ S_{T_i} = \frac{\frac{1}{2N}\sum_{j=1}^{N}\left(A_j - AB^{(i)}_j\right)^2}
+                          {\mathrm{Var}(Y)}; \]
+  \item optionally the pairwise \emph{second-order} index $S_{ij}$ (only when the
+        Saltelli sampler was run with \xmlNode{computeSecondOrder} set to
+        \xmlString{True}).
+\end{itemize}
+The variance $\mathrm{Var}(Y)$ is computed over the concatenated $A$ and $B$
+blocks. The implementation depends only on \texttt{numpy} (no external
+sensitivity library is required at runtime), so it runs in the stock RAVEN
+environment. This is the RAVEN-native counterpart to driving the sampling with
+RAVEN and analyzing the outputs with an external library.
+%
+\ppType{SobolIndices}{SobolIndices}
+%
+\begin{itemize}
+  \item \xmlNode{features}, \xmlDesc{comma separated string, required field},
+    lists the sampled input variables, \emph{in the same order the Saltelli
+    sampler emitted them} (i.e. the sorted variable names). This order fixes
+    $D$ (the number of inputs) and the reconstruction of the $AB_i$ blocks.
+  %
+  \item \xmlNode{targets}, \xmlDesc{comma separated string, required field},
+    lists the scalar output response(s) for which the indices are computed.
+  %
+  \item \xmlNode{N}, \xmlDesc{integer, required field}, the base sample size $N$
+    that was used by the \textbf{Saltelli} sampler. The number of rows in the
+    input \textbf{PointSet} must equal $N(D+2)$ (or $N(2D+2)$ when second-order
+    indices are requested); this is checked before estimation and a mis-sized
+    input is rejected.
+  %
+  \item \xmlNode{computeSecondOrder}, \xmlDesc{bool, optional field}, set to
+    \xmlString{True} only if the Saltelli sampler was itself run with
+    \xmlNode{computeSecondOrder} \xmlString{True} (so the input contains the
+    $BA_i$ blocks and has $N(2D+2)$ rows). Enables the $S_{ij}$ pairwise
+    indices. \default{False}
+  %
+  \item \xmlNode{numBootstrap}, \xmlDesc{integer, optional field}, number of
+    bootstrap resamples (over base samples) used to estimate the
+    confidence-interval half-widths reported alongside each index. Set to
+    \xmlString{0} to skip the bootstrap. \default{100}
+  %
+  \item \xmlNode{confidenceLevel}, \xmlDesc{float, optional field}, the
+    two-sided confidence level for the bootstrap interval half-widths.
+    \default{0.95}
+  %
+  \item \xmlNode{sampleIDName}, \xmlDesc{string, optional field}, the name of the
+    monotonically increasing sample-id variable used to restore the Saltelli
+    emission order before the $A / B / AB$ blocks are reconstructed. Rows of the
+    input \textbf{PointSet} are sorted numerically on it. \default{prefix}
+\end{itemize}
+%
+\nb For each computed quantity, RAVEN defines a unique output variable name so
+the results are accessible through the \textbf{DataObjects} and
+\textbf{OutStreams} entities. The names are built as follows (with
+\texttt{target} the response name and \texttt{feature} the input name):
+\begin{itemize}
+  \item first-order index: \texttt{S1\_}\emph{target}\texttt{\_}\emph{feature}
+  \item first-order CI half-width: \texttt{S1\_conf\_}\emph{target}\texttt{\_}\emph{feature}
+  \item total-order index: \texttt{ST\_}\emph{target}\texttt{\_}\emph{feature}
+  \item total-order CI half-width: \texttt{ST\_conf\_}\emph{target}\texttt{\_}\emph{feature}
+  \item second-order index: \texttt{S2\_}\emph{target}\texttt{\_}\emph{feature$_i$}\texttt{\_}\emph{feature$_j$} (only if \xmlNode{computeSecondOrder} is \xmlString{True})
+\end{itemize}
+%
+\textbf{Example:}
+\begin{lstlisting}[style=XML,morekeywords={name,subType}]
+<Simulation>
+  ...
+  <Models>
+    ...
+    <PostProcessor name="sobol" subType="SobolIndices">
+      <features>x1,x2,x3</features>
+      <targets>y</targets>
+      <N>512</N>
+      <computeSecondOrder>False</computeSecondOrder>
+      <numBootstrap>100</numBootstrap>
+      <sampleIDName>prefix</sampleIDName>
+    </PostProcessor>
+    ...
+  </Models>
+  ...
+</Simulation>
+\end{lstlisting}
+%
+With the three features above, the computed indices are accessible via the
+variables ``S1\_y\_x1, S1\_y\_x2, S1\_y\_x3, ST\_y\_x1, ST\_y\_x2, ST\_y\_x3''
+(plus the matching \texttt{\_conf} variables) through the \textbf{DataObjects}
+and \textbf{OutStreams} entities.

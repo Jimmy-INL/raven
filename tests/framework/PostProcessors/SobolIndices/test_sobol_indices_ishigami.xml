@@ -1,0 +1,109 @@
+<?xml version="1.0" ?>
+<Simulation verbosity="silent">
+  <TestInfo>
+    <name>framework/PostProcessors/SobolIndices.Ishigami</name>
+    <author>AR_DigitalTwin</author>
+    <created>2026-08-14</created>
+    <classesTested>Samplers.Saltelli; PostProcessors.SobolIndices</classesTested>
+    <description>
+      End-to-end test of the native Saltelli cross-sampler and the SobolIndices
+      post-processor on the analytic Ishigami function (x1,x2,x3 ~ U(-pi,pi)).
+      The Saltelli sampler builds the A/B/AB_i design (N*(D+2) = 512*5 = 2560 runs),
+      an ExternalModel evaluates Ishigami, and SobolIndices computes the first-
+      and total-order indices. Gold values are the estimator output at the fixed
+      seed; they sit close to the analytic S1=[0.314,0.442,0.000],
+      ST=[0.558,0.442,0.244], confirming the estimators are correct.
+    </description>
+  </TestInfo>
+
+  <RunInfo>
+    <WorkingDir>SobolIshigami</WorkingDir>
+    <Sequence>sample,compute,dump</Sequence>
+    <batchSize>1</batchSize>
+    <globalSeed>42</globalSeed>
+  </RunInfo>
+
+  <Files/>
+
+  <Distributions>
+    <Uniform name="uni_mpi_pi">
+      <lowerBound>-3.141592653589793</lowerBound>
+      <upperBound>3.141592653589793</upperBound>
+    </Uniform>
+  </Distributions>
+
+  <Samplers>
+    <Saltelli name="saltelli">
+      <samplerInit>
+        <initialSeed>42</initialSeed>
+        <N>512</N>
+        <computeSecondOrder>False</computeSecondOrder>
+        <scramble>True</scramble>
+      </samplerInit>
+      <variable name="x1">
+        <distribution>uni_mpi_pi</distribution>
+      </variable>
+      <variable name="x2">
+        <distribution>uni_mpi_pi</distribution>
+      </variable>
+      <variable name="x3">
+        <distribution>uni_mpi_pi</distribution>
+      </variable>
+    </Saltelli>
+  </Samplers>
+
+  <Models>
+    <ExternalModel ModuleToLoad="ishigami" name="ishigami" subType="">
+      <inputs>x1,x2,x3</inputs>
+      <outputs>y</outputs>
+    </ExternalModel>
+    <PostProcessor name="sobol" subType="SobolIndices">
+      <features>x1,x2,x3</features>
+      <targets>y</targets>
+      <N>512</N>
+      <computeSecondOrder>False</computeSecondOrder>
+      <numBootstrap>0</numBootstrap>
+      <sampleIDName>prefix</sampleIDName>
+    </PostProcessor>
+  </Models>
+
+  <Steps>
+    <MultiRun name="sample">
+      <Input   class="DataObjects" type="PointSet">dummyIn</Input>
+      <Model   class="Models"      type="ExternalModel">ishigami</Model>
+      <Sampler class="Samplers"    type="Saltelli">saltelli</Sampler>
+      <Output  class="DataObjects" type="PointSet">samples</Output>
+    </MultiRun>
+    <PostProcess name="compute">
+      <Input  class="DataObjects" type="PointSet">samples</Input>
+      <Model  class="Models"      type="PostProcessor">sobol</Model>
+      <Output class="DataObjects" type="PointSet">indices</Output>
+    </PostProcess>
+    <IOStep name="dump">
+      <Input  class="DataObjects" type="PointSet">indices</Input>
+      <Output class="OutStreams"  type="Print">indices_dump</Output>
+    </IOStep>
+  </Steps>
+
+  <DataObjects>
+    <PointSet name="dummyIn">
+      <Input>x1,x2,x3</Input>
+      <Output>OutputPlaceHolder</Output>
+    </PointSet>
+    <PointSet name="samples">
+      <Input>x1,x2,x3</Input>
+      <Output>y</Output>
+    </PointSet>
+    <PointSet name="indices">
+      <Input>InputPlaceHolder</Input>
+      <Output>S1_y_x1,S1_y_x2,S1_y_x3,ST_y_x1,ST_y_x2,ST_y_x3</Output>
+    </PointSet>
+  </DataObjects>
+
+  <OutStreams>
+    <Print name="indices_dump">
+      <type>csv</type>
+      <source>indices</source>
+    </Print>
+  </OutStreams>
+</Simulation>

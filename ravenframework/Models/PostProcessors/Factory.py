@@ -34,6 +34,7 @@ from .ExternalPostProcessor import ExternalPostProcessor
 from .TopologicalDecomposition import TopologicalDecomposition
 from .ComparisonStatisticsModule import ComparisonStatistics
 from .RealizationAverager import RealizationAverager
+from .SobolIndices import SobolIndices
 from .ParetoFrontierPostProcessor import ParetoFrontier
 from .EconomicRatio import EconomicRatio
 from .ValidationBase import ValidationBase

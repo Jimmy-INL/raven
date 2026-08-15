@@ -1,0 +1,8 @@
+[Tests]
+  [./Ishigami]
+    type = 'RavenFramework'
+    input = 'test_sobol_indices_ishigami.xml'
+    csv = 'SobolIshigami/indices_dump.csv'
+    rel_err = 1e-6
+  [../]
+[]

@@ -1,0 +1,89 @@
+<?xml version="1.0" ?>
+<Simulation verbosity="silent">
+  <TestInfo>
+    <name>framework/Samplers/Saltelli.Design</name>
+    <author>AR_DigitalTwin</author>
+    <created>2026-08-14</created>
+    <classesTested>Samplers.Saltelli</classesTested>
+    <description>
+      Sampler-only coverage for the native Saltelli cross-sampler. With N=8 base
+      samples and D=2 variables (computeSecondOrder=False) the design has
+      N*(D+2) = 32 rows in the order [A_j, B_j, AB_{j,x1}, AB_{j,x2}] per base
+      sample j. A trivial linear model y = x1 + 2*x2 is evaluated so the dumped
+      PointSet records the exact sampled input values; the gold file pins the
+      A/B/AB row structure and the distribution ppf mapping at the fixed seed.
+      This isolates the design construction from the SobolIndices estimator math.
+    </description>
+  </TestInfo>
+
+  <RunInfo>
+    <WorkingDir>SaltelliDesign</WorkingDir>
+    <Sequence>sample,dump</Sequence>
+    <batchSize>1</batchSize>
+    <globalSeed>42</globalSeed>
+  </RunInfo>
+
+  <Files/>
+
+  <Distributions>
+    <Uniform name="uni01">
+      <lowerBound>0.0</lowerBound>
+      <upperBound>1.0</upperBound>
+    </Uniform>
+  </Distributions>
+
+  <Samplers>
+    <Saltelli name="saltelli">
+      <samplerInit>
+        <initialSeed>42</initialSeed>
+        <N>8</N>
+        <computeSecondOrder>False</computeSecondOrder>
+        <scramble>True</scramble>
+      </samplerInit>
+      <variable name="x1">
+        <distribution>uni01</distribution>
+      </variable>
+      <variable name="x2">
+        <distribution>uni01</distribution>
+      </variable>
+    </Saltelli>
+  </Samplers>
+
+  <Models>
+    <ExternalModel ModuleToLoad="linmodel" name="linmodel" subType="">
+      <inputs>x1,x2</inputs>
+      <outputs>y</outputs>
+    </ExternalModel>
+  </Models>
+
+  <Steps>
+    <MultiRun name="sample">
+      <Input   class="DataObjects" type="PointSet">dummyIn</Input>
+      <Model   class="Models"      type="ExternalModel">linmodel</Model>
+      <Sampler class="Samplers"    type="Saltelli">saltelli</Sampler>
+      <Output  class="DataObjects" type="PointSet">samples</Output>
+    </MultiRun>
+    <IOStep name="dump">
+      <Input  class="DataObjects" type="PointSet">samples</Input>
+      <Output class="OutStreams"  type="Print">design_dump</Output>
+    </IOStep>
+  </Steps>
+
+  <DataObjects>
+    <PointSet name="dummyIn">
+      <Input>x1,x2</Input>
+      <Output>OutputPlaceHolder</Output>
+    </PointSet>
+    <PointSet name="samples">
+      <Input>x1,x2</Input>
+      <Output>y</Output>
+    </PointSet>
+  </DataObjects>
+
+  <OutStreams>
+    <Print name="design_dump">
+      <type>csv</type>
+      <source>samples</source>
+    </Print>
+  </OutStreams>
+</Simulation>

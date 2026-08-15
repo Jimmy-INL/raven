@@ -124,6 +124,7 @@ class Model(utils.metaclass_insert(abc.ABCMeta, BaseEntity, Assembler, InputData
                                                 'AdaptiveSobol',
                                                 'EnsembleForward',
                                                 'CustomSampler',
+                                                'Saltelli',
                                                 'AdaptiveMonteCarlo',
                                                 'Metropolis',
                                                 'AdaptiveMetropolis']

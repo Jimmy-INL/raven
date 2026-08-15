@@ -1,0 +1,8 @@
+[Tests]
+  [./Design]
+    type = 'RavenFramework'
+    input = 'test_saltelli_design.xml'
+    csv = 'SaltelliDesign/design_dump.csv'
+    rel_err = 1e-6
+  [../]
+[]

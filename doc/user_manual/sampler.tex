@@ -1904,6 +1904,92 @@ Example:
 </Samplers>
 \end{lstlisting}
 
+%%% Forward Samplers: Saltelli
+\subsubsection{Saltelli sampling strategy}
+\label{subsubsubsec:Saltelli}
+The \textbf{Saltelli} sampler generates the cross-sample design required to
+estimate variance-based (Sobol') global sensitivity indices. From a
+low-discrepancy Sobol' sequence in $2D$ dimensions (where $D$ is the number of
+sampled variables) it forms two independent base matrices $A$ and $B$ of size
+$N \times D$, and then $D$ hybrid matrices $AB_i$, where $AB_i$ is a copy of $A$
+with its $i$-th column replaced by the $i$-th column of $B$. The unit-hypercube
+rows are mapped to the input space through the inverse CDF (\texttt{ppf}) of each
+variable's \xmlNode{distribution}, exactly as the other forward samplers do, so
+any RAVEN univariate distribution may be used. The total number of model
+evaluations is $N(D+2)$; when \xmlNode{computeSecondOrder} is \xmlString{True}
+the complementary $BA_i$ matrices are also emitted and the count becomes
+$N(2D+2)$. The resulting \textbf{PointSet} is consumed by the
+\textbf{SobolIndices} PostProcessor (see Section~\ref{SobolIndices}), which
+reconstructs the $A / B / AB_i$ blocks from the sample order and computes the
+first-, total-, and (optionally) second-order indices.
+
+The sampler relies only on \texttt{numpy} and \texttt{scipy} (through
+\texttt{scipy.stats.qmc.Sobol}); no external sensitivity-analysis library is
+required.
+\specBlock{a}{Saltelli}
+%
+\attrsIntro
+\vspace{-5mm}
+\begin{itemize}
+\itemsep0em
+\item \textbf{name}, \textit{required string attribute}, user-defined name of this Sampler. N.B. As for the other objects, this is the name that can be used to refer to this specific entity from other input blocks (xml);
+\end{itemize}
+\vspace{-5mm}
+
+In the \textbf{Saltelli} input block the user lists the variables to be sampled
+within consecutive \xmlNode{variable} blocks, each associated to a
+\xmlNode{distribution}, exactly as for the \textbf{MonteCarlo} sampler. In
+addition, the following node configures the design:
+\begin{itemize}
+  \item \xmlNode{samplerInit}, \xmlDesc{XML node, required parameter}, collects
+    the settings of the Saltelli design. It accepts the following sub-nodes:
+    \begin{itemize}
+      \item \xmlNode{N}, \xmlDesc{integer, required field}, the base sample size
+        $N$. The generated number of model evaluations is $N(D+2)$ (or
+        $N(2D+2)$ with second-order indices). Must be at least 2.
+      \item \xmlNode{initialSeed}, \xmlDesc{integer, optional field}, the seed
+        used to initialize the Sobol' sequence engine, for reproducible designs.
+      \item \xmlNode{computeSecondOrder}, \xmlDesc{bool, optional field}, when
+        \xmlString{True} the $BA_i$ matrices are also emitted so the paired
+        \textbf{SobolIndices} PostProcessor can estimate second-order indices.
+        \default{False}
+      \item \xmlNode{scramble}, \xmlDesc{bool, optional field}, whether to apply
+        Owen scrambling to the Sobol' sequence (recommended for better
+        convergence of the index estimators). \default{True}
+    \end{itemize}
+  \item \xmlNode{variable}, \xmlDesc{XML node, required parameter}, as in the
+    other forward samplers, associates a sampled variable to a
+    \xmlNode{distribution}. \nb correlated variables (a single \xmlNode{variable}
+    node listing several comma-separated names bound to one ND distribution) are
+    not supported by this sampler.
+  \item \constantVariablesDescription
+\end{itemize}
+
+Example:
+\begin{lstlisting}[style=XML]
+<Samplers>
+  ...
+  <Saltelli name="saltelli">
+    <samplerInit>
+      <initialSeed>42</initialSeed>
+      <N>512</N>
+      <computeSecondOrder>False</computeSecondOrder>
+      <scramble>True</scramble>
+    </samplerInit>
+    <variable name="x1">
+      <distribution>uniform</distribution>
+    </variable>
+    <variable name="x2">
+      <distribution>uniform</distribution>
+    </variable>
+    <variable name="x3">
+      <distribution>uniform</distribution>
+    </variable>
+  </Saltelli>
+  ...
+</Samplers>
+\end{lstlisting}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Dynamic Event Tree Samplers %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -33,6 +33,7 @@ from .Sobol import Sobol
 from .SparseGridCollocation import SparseGridCollocation
 from .EnsembleForward import EnsembleForward
 from .CustomSampler import CustomSampler
+from .Saltelli import Saltelli
 
 # Adaptive samplers
 from .LimitSurfaceSearch import LimitSurfaceSearch
@@ -57,6 +58,7 @@ factory.registerType('ResponseSurfaceDesign'   , ResponseSurfaceDesign)
 factory.registerType('Sobol'                   , Sobol)
 factory.registerType('SparseGridCollocation'   , SparseGridCollocation)
 factory.registerType('CustomSampler'           , CustomSampler)
+factory.registerType('Saltelli'                , Saltelli)
 factory.registerType('EnsembleForward'         , EnsembleForward)
 factory.registerType('LimitSurfaceSearch'      , LimitSurfaceSearch)
 factory.registerType('AdaptiveSobol'           , AdaptiveSobol)
