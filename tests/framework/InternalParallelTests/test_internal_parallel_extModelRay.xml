@@ -24,7 +24,7 @@
   <RunInfo>
     <WorkingDir>InternalParallelExtModelRay</WorkingDir>
     <Sequence>ParalleMonteCarlo</Sequence>
-    <batchSize>4</batchSize>
+    <batchSize>3</batchSize>
     <parallelMethod>ray</parallelMethod>
     <globalSeed>5489</globalSeed>
   </RunInfo>
