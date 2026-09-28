@@ -122,6 +122,50 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
     self.multiBestOutputs = None
     self._populationCache = {}
 
+  def _getCheckpointState(self):
+    """
+      Returns multi-objective GA runtime state merged with the base GA + RavenSampled state.
+      Extends the single-objective base with the non-dominated-sorting bookkeeping
+      (ranks, crowding distances), the rank-1 archive (multiBest*), and the multi-objective
+      convergence metrics (ahdp/ahd/hdsm).
+      @ In, None
+      @ Out, state, dict, serializable optimizer runtime state
+    """
+    state = GeneticAlgorithm._getCheckpointState(self)
+    state.update({
+      'popRanks':                getattr(self, 'popRanks', None),
+      'popCrowdingDist':         getattr(self, 'popCrowdingDist', None),
+      'multiBestPoint':          getattr(self, 'multiBestPoint', None),
+      'multiBestFitVals':        getattr(self, 'multiBestFitVals', None),
+      'multiBestMinObjVals':     getattr(self, 'multiBestMinObjVals', None),
+      'multiBestConstraintVals': getattr(self, 'multiBestConstraintVals', None),
+      'multiBestRank':           getattr(self, 'multiBestRank', None),
+      'multiBestCD':             getattr(self, 'multiBestCD', None),
+      'ahdp':                    getattr(self, 'ahdp', np.NaN),
+      'ahd':                     getattr(self, 'ahd', np.NaN),
+      'hdsm':                    getattr(self, 'hdsm', np.NaN),
+    })
+    return state
+
+  def _restoreCheckpointState(self, state):
+    """
+      Restores multi-objective GA runtime state, delegating base GA + RavenSampled state to super().
+      @ In, state, dict, state dict previously produced by _getCheckpointState
+      @ Out, None
+    """
+    GeneticAlgorithm._restoreCheckpointState(self, state)
+    self.popRanks                = state.get('popRanks')
+    self.popCrowdingDist         = state.get('popCrowdingDist')
+    self.multiBestPoint          = state.get('multiBestPoint')
+    self.multiBestFitVals        = state.get('multiBestFitVals')
+    self.multiBestMinObjVals     = state.get('multiBestMinObjVals')
+    self.multiBestConstraintVals = state.get('multiBestConstraintVals')
+    self.multiBestRank           = state.get('multiBestRank')
+    self.multiBestCD             = state.get('multiBestCD')
+    self.ahdp                    = state.get('ahdp', np.NaN)
+    self.ahd                     = state.get('ahd', np.NaN)
+    self.hdsm                    = state.get('hdsm', np.NaN)
+
   @classmethod
   def getInputSpecification(cls):
     """
@@ -410,7 +454,18 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
     exportOutputs = self._solutionExport.getVars('output')
     if not exportOutputs:
       return {}
-    exportOutputs = [var for var in exportOutputs if var not in self.toBeSampled and var not in self._objectiveVar]
+    # Reserved solution-export bookkeeping variables (acceptance status, reject reason,
+    # iteration counters, GA per-row metrics) are stamped by the export machinery in
+    # _updateSolutionExport, not produced by the model. They are never cached model
+    # outputs, so pulling them here would record np.nan and then clobber the correct
+    # 'accepted' status ('final'/'accepted'/'first') when this dict is merged back into
+    # the export realization. Exclude them explicitly.
+    reservedMeta = {'trajID', 'iteration', 'accepted', 'rejectReason', 'modelRuns',
+                    'rank', 'CD', 'age', 'batchId', 'fitness'}
+    exportOutputs = [var for var in exportOutputs
+                     if var not in self.toBeSampled
+                     and var not in self._objectiveVar
+                     and var not in reservedMeta]
     if not exportOutputs:
       return {}
     collected = {var: [] for var in exportOutputs}
@@ -470,6 +525,17 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
     @ Out, toAdd, dict, solution export additions for this realization.
     """
     toAdd = super()._addToSolutionExport(traj, rlz, acceptable)
+    # 'age' is a per-generation, per-chromosome quantity written directly by the 'every'
+    # writeSteps loop (rlzDict['age'] = self.popAges[i]). The single-objective base
+    # (_addToSolutionExport) synthesizes a fallback age from self.popAges[0] whenever the
+    # incoming realization lacks one; for the multi-objective final Pareto rows the
+    # realization legitimately carries no 'age', and that base fallback would stamp an
+    # arbitrary population age (popAges[0]) onto every final row. The final front is the
+    # non-dominated archive, not aged population members, so record an unset age (nan ->
+    # empty CSV cell) there rather than fabricate a value. The var must stay present so the
+    # realization keeps the full expected column set (dropping it drops the row).
+    if 'age' not in rlz:
+      toAdd['age'] = np.atleast_1d(np.nan)
     if 'rank' in rlz:
       toAdd['rank'] = rlz['rank']
     elif self.multiBestRank is not None:
@@ -674,7 +740,7 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
         solutionExportVars.update(outputs)
       solutionExportVars.update(self.dependentSample.keys())
       for i in range(popSize):
-        survivorSlice = self.pop.isel(chromosome=i)
+        survivorSlice = self.population.isel(chromosome=i)
         rlzDict = survivorSlice.to_series().to_dict()
         for j in range(len(self._objectiveVar)):
           rlzDict[self._objectiveVar[j]] = self.popMinObjVals[j][i]
@@ -688,7 +754,7 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
           rlzDict[f'FitnessEvaluation_{fitName}'] = fitValsContainer[fitName].data[i]
         for ind, consName in enumerate([y.name for y in (self._constraintFunctions + self._impConstraintFunctions)]):
           rlzDict[f'ConstraintEvaluation_{consName}'] = constraintVals.data[i, ind]
-        cachedOutputs = self._retrieveCachedOutputs(self._chromosomeDictFromPopulation(self.pop, i), dataset=rlz)
+        cachedOutputs = self._retrieveCachedOutputs(self._chromosomeDictFromPopulation(self.population, i), dataset=rlz)
         for var in solutionExportVars:
           if var in rlzDict:
             continue

@@ -212,7 +212,7 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
     traj = info['traj']
 
     if self.counter > 1:
-      combinedPop = np.vstack([self.pop.data, offspring.data])
+      combinedPop = np.vstack([self.population.data, offspring.data])
       combinedMinObjVals = [self.popMinObjVals[i] + offspringMinObjVals[i]
                          for i in range(len(self._objectiveVar))]
       combinedAges = list(map(lambda x: x + 1, self.popAges)) + [0] * len(offspring)
@@ -243,7 +243,7 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
           normalizationBounds=self._crowdingNormalizationBounds(combinedExternalObjValsBySolution))
 
       objectiveNames = list(self.popFitVals.keys())
-      (self.pop,
+      (self.population,
        self.popRanks,
        self.popAges,
        self.popCrowdingDist,
@@ -276,7 +276,7 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
           objectiveValues=currentPopExternalObjValsBySolution,
           normalizationBounds=self._crowdingNormalizationBounds(currentPopExternalObjValsBySolution))
 
-      self.pop = offspring
+      self.population = offspring
       self.popFitVals = offspringFitVals
       self.popMinObjVals = offspringMinObjVals
       self.popAges = [0] * len(offspring)
@@ -294,7 +294,7 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
       self.prevPopInputs = None
 
     self._collectOptPointMulti(rlz,
-                               self.pop,
+                               self.population,
                                self.popRanks,
                                self.popCrowdingDist,
                                self.popMinObjVals,
@@ -311,7 +311,7 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
                                self.popRanks,
                                self.popCrowdingDist)
 
-    parents = self._parentSelectionInstance(self.pop,
+    parents = self._parentSelectionInstance(self.population,
                                             variables=list(self.toBeSampled),
                                             fitness=self.popFitVals,
                                             kSelection=self._kSelection,
@@ -365,4 +365,4 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
         newRlz[var] = float(daChildren.loc[i, var].values)
       self._submitRun(newRlz, traj, self.getIteration(traj))
 
-    self.prevPopInputs = deepcopy(self.pop)
+    self.prevPopInputs = deepcopy(self.population)

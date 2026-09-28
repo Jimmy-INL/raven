@@ -237,6 +237,17 @@ __crossovers['uniformCrossover']   = uniformCrossover
 __crossovers['sbxCrossover']       = sbxCrossover
 
 
+def registerCrossover(name, func):
+  """
+    Register a crossover operator function under the given name.  Plugins call
+    this from their __init__.py to make custom operators discoverable by the GA.
+    @ In, name, str, operator name as it will appear in RAVEN XML input.
+    @ In, func, callable, crossover function with signature func(parents, **kwargs).
+    @ Out, None
+  """
+  __crossovers[name] = func
+
+
 def returnInstance(cls, name):
   """
     Method designed to return class instance

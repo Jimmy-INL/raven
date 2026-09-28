@@ -29,8 +29,13 @@ def simple_offsprings():
 def test_swap_mutator_swaps_selected_locations(simple_offsprings, monkeypatch):
   offsprings, dist = simple_offsprings
 
+  # swapMutator draws one scalar per chromosome (same convention as every other mutator in the
+  # module) and swaps that chromosome's genes only when draw <= mutationProb. Feed a per-call
+  # sequence so the first chromosome mutates (0.0 <= 0.5) and the second does not (1.0 > 0.5).
+  random_draws = iter([0.0, 1.0])
+
   def fake_random(dim=1, samples=1, keepMatrix=False, engine=None):
-    return 0.0
+    return next(random_draws)
 
   monkeypatch.setattr(randomUtils, 'random', fake_random)
   mutated = mutators.swapMutator(

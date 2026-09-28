@@ -33,15 +33,14 @@ def singleObjSurvivorSelect(self, info, rlz, traj, offspring, offspringFitVals, 
     @ In, offspringFitVals, xr.Dataset, fitness of offspring
     @ In, minObjVals, list, minimization-space objective values of offspring
     @ In, constraintVals, xr.DataArray, constraint data
-    @ Out, None (updates self.pop* variables)
+    @ Out, None (updates self.population and self.pop* variables)
   """
   if self.counter > 1:
-    # Survivor selection returns the new population; keep both legacy and new attributes in sync.
-    self.pop, self.popFitVals, \
+    self.population, self.popFitVals, \
     self.popAges, self.popMinObjVals = self._survivorSelectionInstance(
         age=self.popAges,
         variables=list(self.toBeSampled),
-        population=self.pop,
+        population=self.population,
         popFitVals=self.popFitVals,
         objVar=self._objectiveVar[0],
         newRlz=rlz,
@@ -50,16 +49,9 @@ def singleObjSurvivorSelect(self, info, rlz, traj, offspring, offspringFitVals, 
     )
   else:
     # First generation: offspring becomes the current population
-    self.pop = offspring
+    self.population = offspring
     self.popFitVals = offspringFitVals
     baseObj = minObjVals[0] if isinstance(minObjVals, list) and len(minObjVals) > 0 else rlz[self._objectiveVar[0]].data
     self.popMinObjVals = list(np.atleast_1d(baseObj))
     self.popAges = [0] * len(offspring)
   self.popConstraintVals = constraintVals
-
-  # Mirror legacy attribute names to keep downstream logic functional.
-  self.population = self.pop
-  self.fitVals = self.popFitVals
-  self.popAge = self.popAges
-  self.minObjVals = self.popMinObjVals
-  self.constraintVals = self.popConstraintVals

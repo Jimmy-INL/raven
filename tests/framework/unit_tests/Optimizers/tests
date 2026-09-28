@@ -98,10 +98,6 @@
     type = 'PyTest'
     input = 'test_ga_utils_pytest.py'
   [../]
-  [./pytestGaNormalization]
-    type = 'PyTest'
-    input = 'test_ga_normalization_pytest.py'
-  [../]
   [./pytestGaMutators]
     type = 'PyTest'
     input = 'test_mutators_pytest.py'
@@ -118,6 +114,19 @@
     type = 'PyTest'
     input = 'test_survivor_selectors_pytest.py'
   [../]
-  
+
+  # RavenSampled: checkpoint / dedup / fitness normalization
+  [./testCheckpoint]
+    type = 'RavenPython'
+    input = 'testCheckpoint.py'
+  [../]
+  [./testDeduplication]
+    type = 'RavenPython'
+    input = 'testDeduplication.py'
+  [../]
+  [./testFitnessNormalization]
+    type = 'RavenPython'
+    input = 'testFitnessNormalization.py'
+  [../]
 
 []
