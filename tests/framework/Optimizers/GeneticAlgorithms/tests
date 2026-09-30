@@ -1077,6 +1077,16 @@
     [../]
   [../]
 
+  [./TestConstrainedObjectiveNormalize]
+    type = 'RavenFramework'
+    input = 'discrete/constrained/testGAMinwRepConstrainedNormalize.xml'
+    [./csv]
+      type = UnorderedCSV
+      output = 'discrete/constrained/MinwReplacementConstrainedNormalize/opt_export_0.csv'
+      rel_err = 0.001
+    [../]
+  [../]
+
   [./NSGA-II_ZDT1_plots]
     type = 'RavenFramework'
     input = 'continuous/unconstrained/ZDT1_plots.xml'

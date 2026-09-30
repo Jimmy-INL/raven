@@ -254,7 +254,9 @@ from ..utils.gaUtils import dataArrayToDict, datasetToDataArray
 from .RavenSampled import RavenSampled
 from .parentSelectors.parentSelectors import returnInstance as parentSelectionReturnInstance
 from .crossOverOperators.crossovers import returnInstance as crossoversReturnInstance
+from .crossOverOperators.crossovers import __crossovers as _crossovers # {name: implementation}
 from .mutators.mutators import returnInstance as mutatorsReturnInstance
+from .mutators.mutators import __mutators as _mutators # {name: implementation}
 from .survivorSelectors.survivorSelectors import returnInstance as survivorSelectionReturnInstance
 from .survivorSelection import survivorSelection
 from .constraintHandling.constraintHandling import constraintHandling
@@ -463,7 +465,7 @@ class GeneticAlgorithm(RavenSampled):
                     \item \textit{sbxCrossover} - Simulated Binary Crossover (Deb \& Agrawal, 1995) for real-valued variables; produces offspring distributed around the parents within the variable bounds, controlled by a distribution index. Recommended for continuous multi-objective problems.
                   \end{itemize}""")
     crossover.addParam("type",
-                       InputTypes.makeEnumType('crossover','crossoverType',['onePointCrossover','twoPointsCrossover','uniformCrossover','sbxCrossover']),
+                       InputTypes.makeEnumType('crossover','crossoverType',list(_crossovers)),
                        True,
                        descr="type of crossover operation to be used. See the list of options above.")
     crossoverPoint = InputData.parameterInputFactory('points', strictMode=True,
@@ -493,7 +495,7 @@ class GeneticAlgorithm(RavenSampled):
                   \item \textit{polynomialMutator} - Polynomial mutation (Deb \& Goyal, 1996) for real-valued variables; perturbs a gene by a bounded, polynomial-distributed step controlled by a distribution index. Recommended for continuous multi-objective problems, paired with sbxCrossover.
                 \end{itemize} """)
     mutation.addParam("type",
-                      InputTypes.makeEnumType('mutation','mutationType',['swapMutator','scrambleMutator','inversionMutator','randomMutator','polynomialMutator']),
+                      InputTypes.makeEnumType('mutation','mutationType',list(_mutators)),
                       True,
                       descr="type of mutation operation to be used. See the list of options above.")
     mutationLocs = InputData.parameterInputFactory('locs', strictMode=True,
@@ -568,6 +570,11 @@ class GeneticAlgorithm(RavenSampled):
         printPriority=108,
         descr=r""" shift: in case of logistic fitness, this is the shift in the exponential function for the onjective(s). \default{list of zeros}""")
     fitness.addSub(shift)
+    normalizeFitness = InputData.parameterInputFactory('normalize', strictMode=False,
+        contentType=InputTypes.StringType,
+        printPriority=108,
+        descr=r""" normalize: input and output data will be normalized prior to calculating fitness for each iteration of the optimizer. \default{zscore}""")
+    fitness.addSub(normalizeFitness)
     GAparams.addSub(fitness)
     specs.addSub(GAparams)
 
@@ -718,6 +725,8 @@ class GeneticAlgorithm(RavenSampled):
       else:
         self._penaltyCoeff = fitnessNode.findFirst('b').value if fitnessNode.findFirst('b') else None
         self._objCoeff = fitnessNode.findFirst('a').value if fitnessNode.findFirst('a') else None
+      normalizeRaw = fitnessNode.findFirst('normalize').value if fitnessNode.findFirst('normalize') else None
+      self._normalizeFitness = self._resolveNormalizeFitnessOption(normalizeRaw)
     ####################################################################################
     # constraint node                                                                  #
     ####################################################################################

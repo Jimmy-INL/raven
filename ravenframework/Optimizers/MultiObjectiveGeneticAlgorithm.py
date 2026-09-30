@@ -575,6 +575,16 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
                            'column for DIAGNOSTICS only. To rank by the penalized scalar fitness '
                            'instead, set <rankingAlgorithm type="feasibleFirstPenalty">.',
                            color='red')
+        # <normalize> only rescales the diagnostic fitness scalar; since that scalar does not drive
+        # selection under constrained domination, normalization here is a no-op for ranking too.
+        if gaParamsNode.findFirst('fitness').findFirst('normalize') is not None:
+          self.raiseAWarning('<normalize> under <fitness> only rescales the diagnostic fitness '
+                             f'scalar, which under <rankingAlgorithm type="{self._rankingAlgorithmType}"> '
+                             '(Deb-2002 constrained domination) plays NO role in selection or ranking; '
+                             'the <normalize> setting therefore has no effect on the optimization '
+                             'result and affects the exported "fitness" column only. It is load-bearing '
+                             'for single-objective GA and for <rankingAlgorithm type="feasibleFirstPenalty">.',
+                             color='red')
 
   def _addToSolutionExport(self, traj, rlz, acceptable):
     """
