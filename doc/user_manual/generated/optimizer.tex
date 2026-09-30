@@ -2254,6 +2254,31 @@ Genetic Algorithm Example:
             recommended value); values below 0.5 favor feasibility on average.
       \end{itemize}
 
+    \item \xmlNode{rankingAlgorithm}: \xmlDesc{string},
+      selects the ranking handler that turns objectives (and constraints or a scalar
+      fitness) into non-dominated front ranks -- the survival criterion of the
+      multi-objective GA. This is a mix-and-match operator: new ranking policies can be
+      added without changing the algorithm. The optional \xmlAttr{type} attribute chooses
+      the policy; if the node is omitted the default \textit{constrainedDomination} is
+      used, which is byte-for-byte the historical NSGA-II behavior.
+      The \xmlNode{rankingAlgorithm} node recognizes the following parameters:
+        \begin{itemize}
+          \item \xmlAttr{type}: \xmlDesc{[constrainedDomination, feasibleFirstPenalty, epsilonConstrained, stochasticRanking], optional},
+            the ranking policy. Options:                   \begin{itemize}                     \item
+            \textit{constrainedDomination} (default) -- Deb et al. (2002) constrained
+            non-dominated sorting: feasible solutions dominate infeasible ones, two
+            infeasible solutions are ordered by total constraint violation, and two
+            feasible solutions by ordinary Pareto dominance. This is faithful NSGA-II and
+            uses no scalar fitness; any \xmlNode{fitness} node is diagnostic-only.
+            \item \textit{feasibleFirstPenalty} -- Deb (2000) parameter-less penalty ranked as a
+            scalar fitness, provided for comparison against constrained domination. This
+            mode REQUIRES a \xmlNode{fitness} node, whose scalar it ranks.                     \item
+            \textit{epsilonConstrained} -- Takahama \& Sato epsilon-constrained relaxation
+            of constrained domination; the tolerance comes from \xmlNode{constraintEpsilon}.
+            \item \textit{stochasticRanking} -- Runarsson \& Yao; controlled by
+            \xmlNode{stochasticRanking} and its \xmlAttr{pf}.                   \end{itemize}
+      \end{itemize}
+
     \item \xmlNode{restartTolerance}: \xmlDesc{float},
       specifies how strictly a matching point from a \xmlNode{Restart} DataObject must match
       the desired sample point in order to be used. If a potential restart point is within a

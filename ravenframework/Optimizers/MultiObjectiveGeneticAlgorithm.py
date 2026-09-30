@@ -24,6 +24,7 @@ from ..utils import mathUtils, frontUtils, InputData, InputTypes
 from ..utils.gaUtils import datasetToDataArray
 from .GeneticAlgorithm import GeneticAlgorithm
 from .constraintHandling.constraintHandling import constraintHandling
+from .rankingHandlers.rankingHandlers import returnInstance as rankingHandlerReturnInstance
 
 
 class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
@@ -93,6 +94,8 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
     self._adaptiveMutationFinal = None               # final mutation probability (None = 1/nVariables)
     self._stochasticRanking = False                  # if True, stochastically rank by objectives only (Runarsson & Yao)
     self._stochasticRankingPf = 0.45                 # probability of objective-only ranking per generation
+    self._rankingAlgorithmType = 'constrainedDomination'  # ranking-handler operator (see <rankingAlgorithm>); default = Deb-2002
+    self._rankingAlgorithmInstance = None            # resolved ranking-handler function (set in handleInput)
     self.popRanks = None
     self.popCrowdingDist = None
     self.multiBestPoint = None
@@ -247,6 +250,35 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
                   when \xmlNode{stochasticRanking} is enabled. Defaults to 0.45 (the Runarsson \& Yao
                   recommended value); values below 0.5 favor feasibility on average.""")
     specs.addSub(stochasticRanking)
+    rankingAlgorithm = InputData.parameterInputFactory('rankingAlgorithm', strictMode=True,
+        contentType=InputTypes.StringType,
+        descr=r"""selects the ranking handler that turns objectives (and constraints or a scalar
+                  fitness) into non-dominated front ranks -- the survival criterion of the
+                  multi-objective GA. This is a mix-and-match operator: new ranking policies can be
+                  added without changing the algorithm. The optional \xmlAttr{type} attribute chooses
+                  the policy; if the node is omitted the default \textit{constrainedDomination} is
+                  used, which is byte-for-byte the historical NSGA-II behavior.""")
+    rankingAlgorithm.addParam('type',
+        InputTypes.makeEnumType('rankingAlgorithm', 'rankingAlgorithmType',
+                                ['constrainedDomination', 'feasibleFirstPenalty',
+                                 'epsilonConstrained', 'stochasticRanking']),
+        False,
+        descr=r"""the ranking policy. Options:
+                  \begin{itemize}
+                    \item \textit{constrainedDomination} (default) -- Deb et al. (2002) constrained
+                          non-dominated sorting: feasible solutions dominate infeasible ones, two
+                          infeasible solutions are ordered by total constraint violation, and two
+                          feasible solutions by ordinary Pareto dominance. This is faithful NSGA-II and
+                          uses no scalar fitness; any \xmlNode{fitness} node is diagnostic-only.
+                    \item \textit{feasibleFirstPenalty} -- Deb (2000) parameter-less penalty ranked as a
+                          scalar fitness, provided for comparison against constrained domination. This
+                          mode REQUIRES a \xmlNode{fitness} node, whose scalar it ranks.
+                    \item \textit{epsilonConstrained} -- Takahama \& Sato epsilon-constrained relaxation
+                          of constrained domination; the tolerance comes from \xmlNode{constraintEpsilon}.
+                    \item \textit{stochasticRanking} -- Runarsson \& Yao; controlled by
+                          \xmlNode{stochasticRanking} and its \xmlAttr{pf}.
+                  \end{itemize}""")
+    specs.addSub(rankingAlgorithm)
     return specs
 
   @classmethod
@@ -515,6 +547,34 @@ class MultiObjectiveGeneticAlgorithm(GeneticAlgorithm):
     if stochasticRankingNode is not None:
       self._stochasticRanking = stochasticRankingNode.value
       self._stochasticRankingPf = stochasticRankingNode.parameterValues.get('pf', 0.45)
+    ####################################################################################
+    # ranking algorithm (mix-and-match survival criterion; default = Deb-2002)         #
+    ####################################################################################
+    rankingAlgorithmNode = paramInput.findFirst('rankingAlgorithm')
+    if rankingAlgorithmNode is not None:
+      self._rankingAlgorithmType = rankingAlgorithmNode.parameterValues.get('type', 'constrainedDomination')
+    self._rankingAlgorithmInstance = rankingHandlerReturnInstance(self, name=self._rankingAlgorithmType)
+    # Did the user supply a <fitness> node? (base GeneticAlgorithm.handleInput read it already.)
+    gaParamsNode = paramInput.findFirst('GAparams')
+    hasFitnessNode = gaParamsNode is not None and gaParamsNode.findFirst('fitness') is not None
+    if self._rankingAlgorithmType == 'feasibleFirstPenalty':
+      # Penalty ranking ranks the scalar <fitness>; without it there is nothing to rank by.
+      if not hasFitnessNode:
+        self.raiseAnError(IOError, '<rankingAlgorithm type="feasibleFirstPenalty"> ranks a scalar '
+                          'fitness, so a <fitness> node under <GAparams> is required (e.g. '
+                          '<fitness type="feasibleFirst"/>). Either add one, or switch '
+                          '<rankingAlgorithm> to "constrainedDomination".')
+    else:
+      # Under Deb-2002 constrained domination (and its epsilon/stochastic variants) the scalar
+      # fitness plays NO role in selection or ranking; it is only computed and exported for
+      # diagnostics. Make that unmistakable in the log when a <fitness> node is present.
+      if hasFitnessNode:
+        self.raiseAWarning('<fitness> is NOT used for selection or ranking under '
+                           f'<rankingAlgorithm type="{self._rankingAlgorithmType}"> (Deb-2002 '
+                           'constrained domination); it is computed and exported as the "fitness" '
+                           'column for DIAGNOSTICS only. To rank by the penalized scalar fitness '
+                           'instead, set <rankingAlgorithm type="feasibleFirstPenalty">.',
+                           color='red')
 
   def _addToSolutionExport(self, traj, rlz, acceptable):
     """

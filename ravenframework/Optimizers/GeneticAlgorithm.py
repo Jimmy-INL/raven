@@ -698,14 +698,26 @@ class GeneticAlgorithm(RavenSampled):
     ####################################################################################
     # fitness node                                                                     #
     ####################################################################################
+    # <fitness> is REQUIRED for single-objective GA (fitness IS the selection criterion) but
+    # OPTIONAL for multi-objective GA. Under multi-objective NSGA-II the survival criterion is the
+    # ranking handler (see <rankingAlgorithm>), not a scalar fitness; the fitness scalar is computed
+    # only for the diagnostic 'fitness' export column. When omitted in multi-objective mode we
+    # default the diagnostic to 'feasibleFirst' so the export column and internal fitness plumbing
+    # stay well defined; the ranking handler ignores it under constrained domination.
     fitnessNode = gaParamsNode.findFirst('fitness')
-    self._fitnessType = fitnessNode.parameterValues['type']
-    if self._fitnessType == 'logistic':
-      self._scale = fitnessNode.findFirst('scale').value
-      self._shift = fitnessNode.findFirst('shift').value
+    if fitnessNode is None:
+      if not self._isMultiObjective:
+        self.raiseAnError(IOError, 'A <fitness> node under <GAparams> is required for single-objective '
+                          'genetic algorithms, where fitness is the selection criterion.')
+      self._fitnessType = 'feasibleFirst'
     else:
-      self._penaltyCoeff = fitnessNode.findFirst('b').value if fitnessNode.findFirst('b') else None
-      self._objCoeff = fitnessNode.findFirst('a').value if fitnessNode.findFirst('a') else None
+      self._fitnessType = fitnessNode.parameterValues['type']
+      if self._fitnessType == 'logistic':
+        self._scale = fitnessNode.findFirst('scale').value
+        self._shift = fitnessNode.findFirst('shift').value
+      else:
+        self._penaltyCoeff = fitnessNode.findFirst('b').value if fitnessNode.findFirst('b') else None
+        self._objCoeff = fitnessNode.findFirst('a').value if fitnessNode.findFirst('a') else None
     ####################################################################################
     # constraint node                                                                  #
     ####################################################################################

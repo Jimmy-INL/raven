@@ -92,10 +92,17 @@ def feasibleFirst(rlz, **kwargs):
   For maximization problems, the objective value is negated, inverting the trends.
   Reference: Deb, Kalyanmoy. "An efficient constraint handling method for genetic algorithms."
 
+  This is a weighted generalization of Deb (2000): with a_i = 1 and b_i = 1 the two branches reduce
+  exactly to Deb's parameter-less scheme; a_i and b_i let the user re-weight the objective and the
+  penalty. Following Deb, obj_{worstFeasible} is the worst objective among the FEASIBLE individuals
+  (not the whole population), which guarantees every feasible solution outranks every infeasible one
+  and orders infeasibles purely by total violation. When no feasible individual exists yet, the
+  whole-population worst objective is used as a fallback anchor.
+
   .. math::
   fitness = \[ \\begin{cases}
-                -obj & g_j(x)\\geq 0 \\forall j \\
-                -obj_{worst} - \\Sigma_{j=1}^{J}<g_j(x)> & otherwise \\
+                -a_i obj & g_j(x)\\geq 0 \\forall j \\
+                -a_i obj_{worstFeasible} - b_i \\Sigma_{j=1}^{J}<g_j(x)> & otherwise \\
                 \\end{cases}
             \];
   @ In, rlz, xr.Dataset, containing the evaluation of a set of individuals
@@ -118,10 +125,20 @@ def feasibleFirst(rlz, **kwargs):
   constraintNum = kwargs['constraintNum']
   g = kwargs['constraintFunction'] if constraintNum > 0 else None  # Constraint evaluations
   fitnessSet = xr.Dataset()
+  # Feasibility mask over the population: True where the individual satisfies all constraints.
+  # Deb (2000) anchors the infeasible penalty base at the WORST FEASIBLE objective, not the worst
+  # objective over the whole population, so that (a) every feasible solution dominates every infeasible
+  # one and (b) infeasibles are ordered purely by total violation. When no feasible solution exists yet
+  # (common in early generations) worst-feasible is undefined, so we fall back to the whole-population
+  # worst objective as a sane anchor.
+  if constraintNum == 0:
+    feasibleMask = np.ones(np.atleast_1d(rlz[objVar[0]].data).shape[0], dtype=bool)
+  else:
+    feasibleMask = np.all(g.data >= 0, axis=1)
   # For each objective
   for i, obj in enumerate(objVar):
       data = np.atleast_1d(rlz[obj].data)
-      worstObj = max(data) # Worst objective value for penalizing violating solutions
+      worstObj = max(data[feasibleMask]) if np.any(feasibleMask) else max(data) # Worst FEASIBLE objective (Deb 2000); whole-population worst as all-infeasible fallback
       fitness = np.zeros(data.shape)
       for ind in range(data.shape[0]):
           # If no contraints or all constraints are satisfied

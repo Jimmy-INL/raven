@@ -230,11 +230,13 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
           [[self._objMult[obj] * val for obj, val in zip(self._objectiveVar, solution)]
            for solution in zip(*combinedMinObjVals)], dtype=float)
       minMask = np.array([optType == "min" for optType in self._minMax], dtype=bool)
-      combinedRanks = frontUtils.rankNonDominatedFrontiers(
-          combinedExternalObjValsBySolution,
+      combinedRanks = self._rankingAlgorithmInstance(
+          self,
+          objVals=combinedExternalObjValsBySolution,
           constraintVals=self._rankingConstraintVals(combinedConstraintVals),
           minMask=minMask,
-          epsilon=self._constraintEpsilon)
+          epsilon=self._constraintEpsilon,
+          fitVals=np.asarray(combinedFitVals, dtype=float))
 
       combinedCD = frontUtils.crowdingDistance(
           rank=np.array(combinedRanks),
@@ -265,11 +267,16 @@ class NSGAII(MultiObjectiveGeneticAlgorithm):
           [[self._objMult[obj] * val for obj, val in zip(self._objectiveVar, solution)]
            for solution in zip(*offspringMinObjVals)], dtype=float)
       minMask = np.array([optType == "min" for optType in self._minMax], dtype=bool)
-      currentPopRanks = frontUtils.rankNonDominatedFrontiers(
-          currentPopExternalObjValsBySolution,
+      offspringFitValsBySolution = np.array(
+          [offspringFitVals[key].data.tolist() for key in offspringFitVals.keys()],
+          dtype=float).T
+      currentPopRanks = self._rankingAlgorithmInstance(
+          self,
+          objVals=currentPopExternalObjValsBySolution,
           constraintVals=self._rankingConstraintVals(offspringConstraintVals.data),
           minMask=minMask,
-          epsilon=self._constraintEpsilon)
+          epsilon=self._constraintEpsilon,
+          fitVals=offspringFitValsBySolution)
       currentPopCD = frontUtils.crowdingDistance(
           rank=np.array(currentPopRanks),
           popSize=len(currentPopRanks),
