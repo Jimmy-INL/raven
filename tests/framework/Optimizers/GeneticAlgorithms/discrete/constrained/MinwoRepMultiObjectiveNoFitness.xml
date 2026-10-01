@@ -64,7 +64,10 @@
   <Distributions>
     <UniformDiscrete name='woRep_dist'>
       <lowerBound>2</lowerBound>
-      <upperBound>7</upperBound>
+      <upperBound>10</upperBound> <!--pool {2..10} draw 6: matches MinwoRepMultiObjectivePenalty.xml so the two decks are
+                                      the same problem and differ only in <rankingAlgorithm>. The wider pool keeps a
+                                      meaningful infeasible fraction so constrainedDomination and feasibleFirstPenalty
+                                      produce measurably different fronts (with {2..7} they were byte-identical).-->
       <strategy>withoutReplacement</strategy>
     </UniformDiscrete>
   </Distributions>

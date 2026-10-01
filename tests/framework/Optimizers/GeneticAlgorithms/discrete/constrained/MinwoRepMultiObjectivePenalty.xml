@@ -63,7 +63,11 @@
   <Distributions>
     <UniformDiscrete name='woRep_dist'>
       <lowerBound>2</lowerBound>
-      <upperBound>7</upperBound>
+      <upperBound>10</upperBound> <!--pool {2..10} draw 6: real combinatorial choice (not a forced permutation of {2..7}),
+                                      so a meaningful fraction of the population is infeasible-but-near-optimal.
+                                      This separates feasibleFirstPenalty (ranks the penalized scalar) from
+                                      constrainedDomination (feasible-dominates-infeasible); with {2..7} both
+                                      selected identical survivors and the golds were byte-identical.-->
       <strategy>withoutReplacement</strategy>
     </UniformDiscrete>
   </Distributions>
