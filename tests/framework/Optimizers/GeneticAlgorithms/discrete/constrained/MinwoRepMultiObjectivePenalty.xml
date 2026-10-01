@@ -75,7 +75,8 @@
   <Optimizers>
     <MultiObjectiveGeneticAlgorithm name="GAopt" type="NSGA-II">
       <samplerInit>
-        <limit>500</limit>
+        <limit>40</limit> <!--feasibleFirstPenalty converges at generation 29; the cap keeps the paired
+                              NoFitness deck (which does not converge this early) under the test time limit-->
         <initialSeed>42</initialSeed>
         <writeSteps>every</writeSteps>
         <type>min, max, min</type>

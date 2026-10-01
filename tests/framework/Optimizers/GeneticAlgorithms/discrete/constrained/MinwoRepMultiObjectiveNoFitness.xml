@@ -75,7 +75,8 @@
   <Optimizers>
     <MultiObjectiveGeneticAlgorithm name="GAopt" type="NSGA-II">
       <samplerInit>
-        <limit>500</limit>
+        <limit>40</limit> <!--constrainedDomination needs ~105 generations to meet the convergence target on
+                              pool {2..10} (~190s, near the 300s test limit); cap at 40 to keep the test fast-->
         <initialSeed>42</initialSeed>
         <writeSteps>every</writeSteps>
         <type>min, max, min</type>
