@@ -170,12 +170,6 @@ class SelfOrganizingMapPlot(PlotInterface):
       sqDist = np.sum((gridPositions - bmuPos) ** 2, axis=2)
       influence = np.exp(-sqDist / (2.0 * sigma * sigma))
       weights += lr * influence[..., np.newaxis] * (sample - weights)
-    # The update is contractive (lr <= 0.5, influence <= 1, scaled sample/weights in [0, 1]),
-    # so weights are finite on a well-conditioned toolchain. On older numpy builds accumulated
-    # round-off can still push a cell to +/-inf or NaN; sanitize so the downstream imshow and
-    # colorbar never feed a non-finite data range to matplotlib's tick locator (which overflows
-    # on int(log10(range)) when the range is infinite).
-    weights = np.nan_to_num(weights, nan=0.0, posinf=1.0, neginf=0.0)
     return weights
 
   def run(self):
@@ -260,14 +254,7 @@ class SelfOrganizingMapPlot(PlotInterface):
       fig.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04)
 
     fig.suptitle('Self-organising map projection')
-    try:
-      fig.tight_layout()
-    except (OverflowError, ValueError) as err:
-      # Older matplotlib tick locators raise (OverflowError/ValueError) from int(log10(range))
-      # when a degenerate SOM lattice produces a non-finite or zero axis range. The layout pass
-      # is cosmetic, so fall back to the default spacing rather than aborting the whole plot.
-      self.raiseAWarning(f'SelfOrganizingMapPlot "{self.name}" skipped tight_layout '
-                         f'(degenerate axis range): {err}')
+    fig.tight_layout()
     filename = self._createFilename(defaultName=f'{self.name}.png')
     fig.savefig(filename, dpi=150)
     plt.close(fig)
