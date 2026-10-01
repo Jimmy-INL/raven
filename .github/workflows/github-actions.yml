@@ -51,6 +51,8 @@ jobs:
 
       - name: Check Generated Docs Are Up To Date
         run: |
+          source ./scripts/establish_conda_env.sh --load
+          export LD_LIBRARY_PATH=/home/runner/miniconda3/envs/raven_libraries/lib
           cd doc/user_manual
           ./generate_docs.sh
           cd ../..
