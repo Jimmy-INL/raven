@@ -268,6 +268,18 @@ def crowdingDistance(rank, popSize, objectiveValues, normalizationBounds=None):
     population) can be supplied via normalizationBounds so crowding distances are
     comparable across fronts and generations rather than rescaled per front.
 
+    Duplicates and ties (conventions, NOT part of Deb et al. 2002, which is silent on both):
+    - Duplicate objective vectors: the distance is computed on the unique objective vectors of
+      the front; the first occurrence of each vector carries that location's distance and later
+      copies get 0, so survivor selection drops copies before distinct points. This is the
+      duplicate filter pymoo applies via FunctionalDiversity(filter_out_duplicates=True) (pymoo
+      enables it for its other diversity metrics but not for its default crowding distance).
+      Without it, copies of one location received an arbitrary mix of +inf and 0 depending on
+      their input order.
+    - Ties on a single objective between distinct vectors: each per-objective sort is broken
+      lexicographically by the remaining objectives, so which point is the boundary (+inf), and
+      who its neighbours are, never depends on input order.
+
     @ In, rank, np.array or xr.DataArray, array which contains the front ID for each element of the population
     @ In, popSize, int, size of population
     @ In, objectiveValues, np.array, matrix (nPoints, nObjectives) of objective values for each individual
@@ -292,21 +304,26 @@ def crowdingDistance(rank, popSize, objectiveValues, normalizationBounds=None):
     frontIndices[r].append(i)
 
   for f in fronts:
-    front = frontIndices[f]  # Get indices of current front
     numObjectives = objectiveValues.shape[1]
+    # Keep only the first occurrence of each objective vector; later copies stay at 0
+    allMembers = frontIndices[f]
+    _, firstIdx = np.unique(objectiveValues[allMembers, :], axis=0, return_index=True)
+    front = [allMembers[i] for i in sorted(firstIdx)]
     numPoints = len(front)
 
-    # Special case: fronts with <= 2 points; every member is a boundary point
+    # Special case: fronts with <= 2 distinct points; every one is a boundary point
     if numPoints <= 2:
       crowdDist[front] = np.inf
       continue
 
+    frontObjectives = objectiveValues[front, :]
     # For each objective, calculate crowding distance contribution
     for obj in range(numObjectives):
-      # Sort points in current front by current objective
-      sortedFront = [i for i in front]
-      sortedIndices = np.argsort(objectiveValues[sortedFront, obj], kind='stable')
-      sortedFront = [sortedFront[i] for i in sortedIndices]
+      # Sort by the current objective, ties broken by the other objectives (lexsort: last key is primary)
+      keys = [frontObjectives[:, j] for j in reversed(range(numObjectives)) if j != obj]
+      keys.append(frontObjectives[:, obj])
+      sortedIndices = np.lexsort(keys)
+      sortedFront = [front[i] for i in sortedIndices]
 
       # Only the actual boundary points (first and last after sorting) get infinity
       crowdDist[sortedFront[0]] = np.inf   # Minimum boundary

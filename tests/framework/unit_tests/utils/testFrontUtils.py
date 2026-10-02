@@ -227,6 +227,32 @@ checkAnswer('crowding population-normalized interior', cdNorm[1], 1.0)
 # Boundaries remain infinite regardless of normalization.
 checkAnswer('crowding normalized boundary low', cdNorm[0], np.inf)
 checkAnswer('crowding normalized boundary high', cdNorm[2], np.inf)
+
+# Crowding distance with duplicate objective vectors (discrete problems).
+# Distinct locations: (10,20) and (16,10) are boundaries; (12,18) gets 4/6+5/10 and (14,15)
+# gets 4/6+8/10. Only the first copy of each location carries its distance; later copies get 0.
+dupFront = np.array([[10., 20.], [10., 20.], [10., 20.], [12., 18.], [12., 18.], [14., 15.], [16., 10.], [16., 10.]])
+dupRank = np.ones(len(dupFront), dtype=int)
+cdDup = frontUtils.crowdingDistance(dupRank, len(dupFront), dupFront)
+checkArray('crowding duplicates: first copy carries the distance, later copies 0', cdDup.tolist(),
+           [np.inf, 0.0, 0.0, 4.0/6.0 + 5.0/10.0, 0.0, 4.0/6.0 + 8.0/10.0, np.inf, 0.0])
+# The distance of each location must not depend on input order, ties included.
+permRng = np.random.default_rng(0)
+dupLocations = {tuple(v): d for v, d in zip(dupFront.tolist(), cdDup) if d != 0.0}
+orderInvariant = True
+for _ in range(50):
+  perm = permRng.permutation(len(dupFront))
+  cdPerm = frontUtils.crowdingDistance(dupRank, len(dupFront), dupFront[perm])
+  permLocations = {tuple(v): d for v, d in zip(dupFront[perm].tolist(), cdPerm) if d != 0.0}
+  orderInvariant = orderInvariant and permLocations == dupLocations and int(np.count_nonzero(cdPerm)) == 4
+checkAnswer('crowding duplicates: invariant to input order', int(orderInvariant), 1)
+# Distinct points tied on one objective: the boundary is chosen by the other objectives, not by
+# input order. (1,5) and (1,3) tie on obj0; lexicographic order puts (1,3) first on obj0.
+tieFront = np.array([[1., 5.], [1., 3.], [2., 2.], [3., 1.]])
+tieRank = np.ones(4, dtype=int)
+cdTie = frontUtils.crowdingDistance(tieRank, 4, tieFront)
+cdTieRev = frontUtils.crowdingDistance(tieRank, 4, tieFront[::-1])[::-1]
+checkArray('crowding single-objective tie is order invariant', cdTie.tolist(), cdTieRev.tolist())
 ###########################################
 
 ###########################################
