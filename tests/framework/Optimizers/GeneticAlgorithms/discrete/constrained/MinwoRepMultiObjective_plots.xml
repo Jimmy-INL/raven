@@ -28,7 +28,6 @@
       <Optimizer class="Optimizers" type="MultiObjectiveGeneticAlgorithm">GAopt</Optimizer>
       <SolutionExport class="DataObjects" type="PointSet">opt_export</SolutionExport>
       <Output class="DataObjects" type="PointSet">optOut</Output>
-      <Output class="OutStreams" type="Print">opt_export</Output>
     </MultiRun>
     <IOStep name="print">
       <Input class="DataObjects" type="PointSet">opt_export</Input>
