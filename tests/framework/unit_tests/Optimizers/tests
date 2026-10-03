@@ -106,6 +106,10 @@
     type = 'PyTest'
     input = 'test_rank_crowding_selector_pytest.py'
   [../]
+  [./pytestNsga3Operators]
+    type = 'PyTest'
+    input = 'test_nsga3_operators_pytest.py'
+  [../]
   [./pytestGaRepair]
     type = 'PyTest'
     input = 'test_repair_operator_pytest.py'

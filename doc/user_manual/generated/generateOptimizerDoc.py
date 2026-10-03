@@ -263,6 +263,61 @@ Multiobjective Genetic Algorithm Example (NSGA-II):
 \end{lstlisting}
 """
 
+minimalNSGAIII = r"""
+\hspace{24pt}
+Multiobjective Genetic Algorithm Example (NSGA-III, with the reference-point operator families at
+their defaults):
+\begin{lstlisting}[style=XML]
+  <Optimizers>
+    <MultiObjectiveGeneticAlgorithm name="GAopt" type="NSGA-III">
+      <samplerInit>
+        <limit>15</limit>
+        <initialSeed>42</initialSeed>
+        <writeSteps>every</writeSteps>
+        <type>min,min,min</type>
+      </samplerInit>
+
+      <GAparams>
+        <populationSize>50</populationSize>
+        <parentSelection>tournamentSelection</parentSelection>
+        <reproduction>
+          <crossover type="sbxCrossover">
+            <crossoverProb>0.9</crossoverProb>
+          </crossover>
+          <mutation type="polynomialMutator">
+            <mutationProb>0.15</mutationProb>
+          </mutation>
+        </reproduction>
+        <fitness type="feasibleFirst"/>
+        <survivorSelection>rankNcrowdingBased</survivorSelection>
+      </GAparams>
+
+      <referenceDirections type="dasDennis"/>
+      <objectiveNormalization type="hyperplane"/>
+      <association type="perpendicular"/>
+      <niching type="referencePoint"/>
+
+      <convergence>
+        <AHDp>0.01</AHDp>
+      </convergence>
+
+      <variable name="x1">
+        <distribution>unifDist</distribution>
+      </variable>
+      <variable name="x2">
+        <distribution>unifDist</distribution>
+      </variable>
+      <variable name="x3">
+        <distribution>unifDist</distribution>
+      </variable>
+      <objective>obj1, obj2, obj3</objective>
+      <TargetEvaluation class="DataObjects" type="PointSet">optOut</TargetEvaluation>
+      <Sampler class="Samplers" type="MonteCarlo">MC_samp</Sampler>
+    </MultiObjectiveGeneticAlgorithm>
+  </Optimizers>
+\end{lstlisting}
+"""
+
 minimalBayesianOptimizer = r"""
 \hspace{24pt}
 Bayesian Optimizer Example:
@@ -307,6 +362,12 @@ Bayesian Optimizer Example:
 # examples Factory
 exampleFactory = {'GradientDescent':minimalGradientDescent,'SimulatedAnnealing':minimalSimulatedAnnealing,'GeneticAlgorithm':minimalGeneticAlgorithm,'MultiObjectiveGeneticAlgorithm':minimalMultiObjectiveGeneticAlgorithm,'BayesianOptimizer':minimalBayesianOptimizer}
 
+# Concrete multi-objective GA algorithms are registered under MultiObjectiveGeneticAlgorithm (selected
+# via <MultiObjectiveGeneticAlgorithm type="...">), not as top-level optimizer factory types, so they
+# are documented from MultiObjectiveGeneticAlgorithm.knownAlgorithms rather than factory.knownTypes().
+# Each entry maps a registered algorithm name to its minimal XML example.
+multiObjectiveExampleFactory = {'NSGA-III': minimalNSGAIII}
+
 #------------#
 # OPTIMIZERS #
 #------------#
@@ -323,6 +384,18 @@ for name in Optimizers.factory.knownTypes():
   tex = insertSolnExport(tex, obj)
   msg +=tex
   msg+= exampleFactory[name]
+
+# Document each concrete multi-objective GA algorithm's extended spec (e.g. NSGA-III's reference-point
+# operator-family nodes), which the factory loop above does not reach because these are registered
+# under MultiObjectiveGeneticAlgorithm rather than as factory types.
+multiObjectiveBase = Optimizers.factory.returnClass('MultiObjectiveGeneticAlgorithm')
+for name, algorithmClass in multiObjectiveBase.knownAlgorithms.items():
+  specs = algorithmClass.getInputSpecification()
+  tex = specs.generateLatex()
+  tex = insertSolnExport(tex, algorithmClass)
+  msg += tex
+  if name in multiObjectiveExampleFactory:
+    msg += multiObjectiveExampleFactory[name]
 
 fName = os.path.abspath(os.path.join(os.path.dirname(__file__), 'optimizer.tex'))
 with open(fName, 'w', encoding='utf-8') as f:
