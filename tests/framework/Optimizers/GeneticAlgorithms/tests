@@ -1140,6 +1140,14 @@
       type = Exists
       output = 'continuous/unconstrained/NSGA3_DTLZ2/1-population.png'
     [../]
+    [./plot_niching_heatmap]
+      type = Exists
+      output = 'continuous/unconstrained/NSGA3_DTLZ2/1-niching_heatmap.png'
+    [../]
+    [./plot_reference_directions]
+      type = Exists
+      output = 'continuous/unconstrained/NSGA3_DTLZ2/1-reference_directions.png'
+    [../]
   [../]
 
   [./NSGA-III_DTLZ2_variants]

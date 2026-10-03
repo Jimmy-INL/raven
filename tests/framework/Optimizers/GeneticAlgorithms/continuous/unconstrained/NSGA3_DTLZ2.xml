@@ -35,6 +35,8 @@
       <Output class="OutStreams" type="Print">optOut</Output>
       <Output class="OutStreams" type="Plot">opt_path</Output>
       <Output class="OutStreams" type="Plot">population</Output>
+      <Output class="OutStreams" type="Plot">niching_heatmap</Output>
+      <Output class="OutStreams" type="Plot">reference_directions</Output>
     </IOStep>
   </Steps>
 
@@ -144,6 +146,18 @@
       <vars>x1, x2, x3, x4, x5, x6, x7, f1, f2, f3</vars>
       <index>batchId</index>
       <how>png</how>
+    </Plot>
+    <Plot name="niching_heatmap" subType="NSGAIIINichingHeatmapPlot">
+      <source>opt_export</source>
+      <objectives>f1, f2, f3</objectives>
+      <index>batchId</index>
+      <populationSize>50</populationSize>
+    </Plot>
+    <Plot name="reference_directions" subType="NSGAIIIReferenceDirectionPlot">
+      <source>opt_export</source>
+      <objectives>f1, f2, f3</objectives>
+      <index>batchId</index>
+      <populationSize>50</populationSize>
     </Plot>
   </OutStreams>
 </Simulation>
