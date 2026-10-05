@@ -787,9 +787,6 @@ DMDC.getInputSpecification()
 #unpickled before the class ever has getInputSpecification called.
 
 
-_parameter_input_cache = {}
-_parameter_input_name_cache = set()
-_assembly_input_cache = {}
 SUPPRESS_INPUT_SPEC_WARNINGS = False
 
 
@@ -816,16 +813,6 @@ def _sanitize_xml_qname(name):
   return safe
 
 
-def _parameter_input_signature(paramList, paramDict):
-  """
-    Build a stable signature for parameterInputFactory calls to detect mismatches.
-  """
-  list_sig = tuple(repr(item) for item in paramList)
-  filtered = {key: val for key, val in paramDict.items() if key != 'descr'}
-  dict_sig = tuple(sorted((key, repr(val)) for key, val in filtered.items()))
-  return (list_sig, dict_sig)
-
-
 def parameterInputFactory(name, *paramList, **paramDict):
   """
     Creates a new ParameterInput class with the same parameters as ParameterInput.createClass
@@ -846,23 +833,8 @@ def parameterInputFactory(name, *paramList, **paramDict):
     #print(tb[i].filename,tb[i].lineno)
     uniquifier += os.path.basename(tb[i].filename[:-3])
   #print("for",name+'Spec'+uniquifier)
-  signature = _parameter_input_signature(paramList, paramDict)
-  cache_key = (name, uniquifier, signature)
-  cached = _parameter_input_cache.get(cache_key)
-  if cached is not None:
-    return cached
-  base_name = name + 'Spec' + uniquifier
-  class_name = base_name
-  if class_name in _parameter_input_name_cache:
-    suffix = abs(hash(signature)) % 1000000
-    class_name = f"{base_name}_{suffix}"
-    while class_name in _parameter_input_name_cache:
-      suffix += 1
-      class_name = f"{base_name}_{suffix}"
-  newClass = type(class_name, (ParameterInput,), {})
+  newClass = type(name+'Spec'+uniquifier, (ParameterInput,), {})
   newClass.createClass(name, *paramList, **paramDict)
-  _parameter_input_cache[cache_key] = newClass
-  _parameter_input_name_cache.add(class_name)
   return newClass
 
 def assemblyInputFactory(*paramList, **paramDict):
@@ -872,35 +844,15 @@ def assemblyInputFactory(*paramList, **paramDict):
     @ In, same parameters as ParameterInput.createClass
     @ Out, newClass, ParameterInput, the newly created class.
   """
-  name = paramList[0] if paramList else paramDict.get('name', 'Assembly')
-  uniquifier = ""
-  tb = traceback.extract_stack()
-  i = -1
-  while i >= -len(tb) and tb[i].name != 'getInputSpecification' and i > -5:
-    i -= 1
-  if i >= -len(tb):
-    uniquifier += os.path.basename(tb[i].filename[:-3])
-  signature = _parameter_input_signature(paramList, paramDict)
-  cache_key = (name, uniquifier, signature)
-  cached = _assembly_input_cache.get(cache_key)
-  if cached is not None:
-    return cached
-  base_name = f"{name}AssemblySpec{uniquifier}"
-  class_name = base_name
-  if class_name in _parameter_input_name_cache:
-    suffix = abs(hash(signature)) % 1000000
-    class_name = f"{base_name}_{suffix}"
-    while class_name in _parameter_input_name_cache:
-      suffix += 1
-      class_name = f"{base_name}_{suffix}"
-  newClass = type(class_name, (ParameterInput,), {})
+  class newClass(ParameterInput):
+    """
+      The new class to be created by the factory
+    """
   newClass.createClass(*paramList, **paramDict)
   newClass.addParam('class', param_type=InputTypes.StringType, required=True,
       descr=r"""RAVEN class for this entity (e.g. Samplers, Models, DataObjects)""")
   newClass.addParam('type', param_type=InputTypes.StringType, required=True,
       descr=r"""RAVEN type for this entity; a subtype of the class (e.g. MonteCarlo, Code, PointSet)""")
-  _assembly_input_cache[cache_key] = newClass
-  _parameter_input_name_cache.add(class_name)
   return newClass
 
 def parseFromList(node, inputList):
