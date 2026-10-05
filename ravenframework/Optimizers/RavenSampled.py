@@ -860,7 +860,7 @@ class RavenSampled(Optimizer):
       bestOpt = self.denormalizeData(optElm)
       bestPoint = dict((var, bestOpt[var]) for var in self.toBeSampled)
 
-      val = optElm[self._objectiveVar[0]]
+      val = np.array([optElm[obj] for obj in self._objectiveVar])
       self.raiseADebug(statusTemplate.format(status='active', traj=traj, val=self._objMultArray * val))
       self.raiseADebug('')
       self.raiseAMessage(' - Final Optimal Point:')
