@@ -1,0 +1,315 @@
+{
+  "entities": [
+    {
+      "entity": "DataObjects",
+      "types": [
+        "DataSet",
+        "HistorySet",
+        "PointSet"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "Databases",
+      "types": [
+        "HDF5",
+        "NetCDF"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "Distributions",
+      "types": [
+        "Bernoulli",
+        "Beta",
+        "Binomial",
+        "BoostDistribution",
+        "Categorical",
+        "Custom1D",
+        "Exponential",
+        "Gamma",
+        "Geometric",
+        "Laplace",
+        "LogNormal",
+        "LogUniform",
+        "Logistic",
+        "MarkovCategorical",
+        "MultivariateNormal",
+        "NDCartesianSpline",
+        "NDInverseWeight",
+        "NDimensionalDistributions",
+        "Normal",
+        "Poisson",
+        "Triangular",
+        "Uniform",
+        "UniformDiscrete",
+        "Weibull"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "Files",
+      "types": [
+        "CSV",
+        "Input",
+        "RAVEN"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "Functions",
+      "types": [
+        "External"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "Metrics",
+      "types": [
+        "Metric"
+      ],
+      "missing_spec": [
+        "Metric"
+      ],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "Models",
+      "types": [
+        "Code",
+        "Dummy",
+        "EnsembleModel",
+        "ExternalModel",
+        "HybridModel",
+        "HybridModelBase",
+        "LogicalModel",
+        "PostProcessor",
+        "ROM"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "Optimizers",
+      "types": [
+        "BayesianOptimizer",
+        "GeneticAlgorithm",
+        "GradientDescent",
+        "SimulatedAnnealing"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "OutStreams",
+      "types": [
+        "Plot",
+        "Print"
+      ],
+      "missing_spec": [
+        "Plot",
+        "Print"
+      ],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "PostProcessors",
+      "types": [],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": [
+        "factory not found"
+      ]
+    },
+    {
+      "entity": "Samplers",
+      "types": [
+        "AdaptiveDynamicEventTree",
+        "AdaptiveMetropolis",
+        "AdaptiveMonteCarlo",
+        "AdaptiveSobol",
+        "AdaptiveSparseGrid",
+        "CustomSampler",
+        "DynamicEventTree",
+        "EnsembleForward",
+        "FactorialDesign",
+        "Grid",
+        "LimitSurfaceSearch",
+        "Metropolis",
+        "MonteCarlo",
+        "ResponseSurfaceDesign",
+        "Sobol",
+        "SparseGridCollocation",
+        "Stratified"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    },
+    {
+      "entity": "Steps",
+      "types": [
+        "IOStep",
+        "MultiRun",
+        "PostProcess",
+        "RomTrainer",
+        "SingleRun"
+      ],
+      "missing_spec": [],
+      "unresolved": [],
+      "errors": []
+    }
+  ],
+  "manual_parsing": {
+    "ravenframework": {
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/Files.py": [
+        "UserGenerated"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/Metrics/MetricEntity.py": [
+        "MetricEntity"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/Metrics/metrics/StatsTestMetric.py": [
+        "StatsTestMetric"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/BaseClasses/BaseInterface.py": [
+        "BaseInterface"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/BaseClasses/Assembler.py": [
+        "Assembler"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/PluginBaseClasses/CodePluginBase.py": [
+        "CodePluginBase"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CustomModes/PBSSimulationMode.py": [
+        "PBSSimulationMode"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CustomModes/MPILegacySimulationMode.py": [
+        "MPILegacySimulationMode"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/AccelerateCFD/AccelerateCFD.py": [
+        "AcceleratedCFD"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/PARCS/PARCSInterface.py": [
+        "PARCS"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/SIMULATE3/SimulateInterface.py": [
+        "Simulate"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/SCALE/ScaleInterface.py": [
+        "Scale"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/OpenFOAM/OpenFOAMInterface.py": [
+        "OpenFOAM"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/Dymola/DymolaInterface.py": [
+        "Dymola"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/SERPENT/SerpentInterface.py": [
+        "SERPENT"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/MAAP5/MAAP5Interface.py": [
+        "MAAP5"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/RAVEN/RAVENInterface.py": [
+        "RAVEN"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/MELCOR/melcorCombinedInterface.py": [
+        "Melcor"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/RELAP5/Relap5Interface.py": [
+        "Relap5"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/Saphire/SaphireInterface.py": [
+        "Saphire"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/Generic/GenericCodeInterface.py": [
+        "GenericCode"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/PHISICS/PhisicsInterface.py": [
+        "Phisics"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/CodeInterfaceClasses/PHISICS/PhisicsRelapInterface.py": [
+        "PhisicsRelap5"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/OutStreams/PrintEntity.py": [
+        "Print"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/OutStreams/PlotEntity.py": [
+        "Plot"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/DataObjects/PointSet.py": [
+        "PointSet"
+      ],
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/ravenframework/DataObjects/HistorySet.py": [
+        "HistorySet"
+      ]
+    },
+    "plugins": {
+      "/Users/abdomg/projects/raven/.claude/worktrees/agent-a7005905c42df297b/plugins/ExamplePlugin/src/SumOfExponential.py": [
+        "SumOfExponential"
+      ]
+    }
+  },
+  "xsd_diff": {
+    "DataObjects": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "Databases": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "Distributions": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "Files": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "Functions": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "Metrics": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "Models": {
+      "missing_in_xsd": [
+        "PostProcessor"
+      ],
+      "extra_in_xsd": []
+    },
+    "Optimizers": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "OutStreams": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "Samplers": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    },
+    "Steps": {
+      "missing_in_xsd": [],
+      "extra_in_xsd": []
+    }
+  }
+}
