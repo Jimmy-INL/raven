@@ -5,7 +5,12 @@ Sync InputData specs, generated XSDs, and the audit baseline JSON.
 This script regenerates:
 - per-entity XSDs under developer_tools/XSDSchemas/generated
 - full Simulation XSD (default: developer_tools/XSDSchemas/generated/raven.xsd)
-- audit baseline JSON (developer_tools/audit_input_specs.json)
+- the minimal coverage-facts regression baseline
+  (developer_tools/audit_input_specs.json)
+
+The baseline holds only the stable coverage facts the TestXSD guardrail
+defends (per-entity missing-getInputSpecification sets, factory errors, and
+xsd_diff sets), not the full, volatile type rosters.
 """
 from __future__ import annotations
 
@@ -67,7 +72,11 @@ def main() -> None:
     _run([python, str(gen_full), args.full_xsd], cwd=str(REPO_ROOT), strict=args.strict)
 
   audit = REPO_ROOT / "developer_tools" / "audit_input_specs.py"
-  _run([python, str(audit), "--json", args.out_json, "--no-print"], cwd=str(REPO_ROOT), strict=True)
+  _run(
+      [python, str(audit), "--baseline-json", args.out_json, "--no-print"],
+      cwd=str(REPO_ROOT),
+      strict=True,
+  )
 
   print("Sync complete.")
 

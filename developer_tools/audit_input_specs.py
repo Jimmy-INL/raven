@@ -14,15 +14,43 @@
 # limitations under the License.
 """Audit InputData spec coverage and XSD alignment in RAVEN.
 
-Outputs a text report to stdout and optionally writes JSON/markdown if requested.
+Discovery is done by LIVE REGISTRY INTROSPECTION rather than by scraping the
+``Factory.py`` sources with regular expressions.  For each entity we import the
+real factory, enumerate ``factory.knownTypes()`` and resolve every registered
+type with ``factory.returnClass()``.  Coverage of ``getInputSpecification`` is
+then decided with a live ``hasattr``/MRO check (the authoritative answer),
+falling back to an AST scan only when a class cannot be resolved live.
+
+Any registered class that itself exposes a secondary registry dict (for example
+``knownAlgorithms`` on the multi-objective genetic-algorithm optimizer) has its
+sub-registered names folded into the audit as well, so algorithms registered via
+``registerAlgorithm(...)`` are not invisible to the guardrail.
+
+The module exposes two public entry points:
+
+``run_audit()``
+    The full, human-oriented audit dict (entities + manual-parsing scan +
+    xsd_diff).  Used by the text report and the ``--json`` dump.
+
+``coverage_facts(audit=None)``
+    The minimal, *portable* regression baseline: per entity only the stable
+    coverage facts (set of classes missing ``getInputSpecification``, the
+    xsd_diff sets, and import/resolve errors).  It deliberately omits the
+    volatile ``types`` rosters and the absolute-path manual-parsing map so that
+    adding a well-formed entity does not churn the committed baseline, while a
+    regressed spec / broken XSD coverage / newly introduced manual-parse class
+    still trips the guard.
+
+Outputs a text report to stdout and optionally writes JSON if requested.
 """
 from __future__ import annotations
 
 import argparse
 import ast
+import importlib
 import json
-import re
-from dataclasses import dataclass
+import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 import xml.etree.ElementTree as ET
@@ -30,20 +58,27 @@ import xml.etree.ElementTree as ET
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GENERATED_XSD_DIR = REPO_ROOT / "developer_tools" / "XSDSchemas" / "generated"
 
-ENTITY_FACTORIES: Dict[str, Path] = {
-    "Samplers": REPO_ROOT / "ravenframework" / "Samplers" / "Factory.py",
-    "Optimizers": REPO_ROOT / "ravenframework" / "Optimizers" / "Factory.py",
-    "Models": REPO_ROOT / "ravenframework" / "Models" / "Factory.py",
-    "OutStreams": REPO_ROOT / "ravenframework" / "OutStreams" / "Factory.py",
-    "DataObjects": REPO_ROOT / "ravenframework" / "DataObjects" / "Factory.py",
-    "Databases": REPO_ROOT / "ravenframework" / "Databases" / "Factory.py",
-    "Distributions": REPO_ROOT / "ravenframework" / "Distributions.py",
-    "PostProcessors": REPO_ROOT / "ravenframework" / "PostProcessors" / "Factory.py",
-    "Metrics": REPO_ROOT / "ravenframework" / "Metrics" / "Factory.py",
-    "Steps": REPO_ROOT / "ravenframework" / "Steps" / "Factory.py",
-    # Small factories defined in single modules.
-    "Functions": REPO_ROOT / "ravenframework" / "Functions.py",
-    "Files": REPO_ROOT / "ravenframework" / "Files.py",
+# Make sure ravenframework is importable when this module is run directly.
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+# Entity -> (importable factory module, attribute holding the EntityFactory).
+# Discovery is live, so these point at the real factory objects, not source
+# files to be scraped.  PostProcessors now resolves correctly (it was invisible
+# to the old regex because its registrations live under Models/PostProcessors).
+ENTITY_FACTORIES: Dict[str, Tuple[str, str]] = {
+    "DataObjects": ("ravenframework.DataObjects.Factory", "factory"),
+    "Databases": ("ravenframework.Databases.Factory", "factory"),
+    "Distributions": ("ravenframework.Distributions", "factory"),
+    "Files": ("ravenframework.Files", "factory"),
+    "Functions": ("ravenframework.Functions", "factory"),
+    "Metrics": ("ravenframework.Metrics.Factory", "factory"),
+    "Models": ("ravenframework.Models.Factory", "factory"),
+    "Optimizers": ("ravenframework.Optimizers.Factory", "factory"),
+    "OutStreams": ("ravenframework.OutStreams.Factory", "factory"),
+    "PostProcessors": ("ravenframework.Models.PostProcessors.Factory", "factory"),
+    "Samplers": ("ravenframework.Samplers.Factory", "factory"),
+    "Steps": ("ravenframework.Steps.Factory", "factory"),
 }
 
 XSD_FILES: Dict[str, Path] = {
@@ -79,9 +114,14 @@ XSD_ROOT_TYPES: Dict[str, str] = {
     "TestInfo": "TestInfoData",
 }
 
-REGISTER_RE = re.compile(r"registerType\(\s*['\"]([^'\"]+)['\"]\s*,\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)")
-FROM_IMPORT_RE = re.compile(r"^from\s+\.([A-Za-z0-9_]+)\s+import\s+([A-Za-z0-9_,\s]+)$", re.M)
-CLASS_RE = re.compile(r"class\s+([A-Za-z_][A-Za-z0-9_]*)\b")
+# Attribute names on a registered class that themselves hold a secondary
+# name->class registry (e.g. the MultiObjectiveGeneticAlgorithm exposes
+# ``knownAlgorithms`` for NSGA-II / NSGA-III).  Generalize here so new
+# sub-registries only need to be named, not special-cased.
+SUBREGISTRY_ATTRS: Tuple[str, ...] = ("knownAlgorithms",)
+
+# Method that marks a class as participating in the InputData spec system.
+SPEC_METHOD = "getInputSpecification"
 
 XML_PARSE_HINTS = (
     "XMLread",
@@ -96,22 +136,52 @@ XML_PARSE_HINTS = (
 
 
 @dataclass
-class ClassAudit:
-    class_name: str
-    module_path: Optional[Path]
-    has_get_input_spec: bool
-    has_xmlread: bool
-    has_read_more_xml: bool
-    has_handle_input: bool
-
-
-@dataclass
 class EntityAudit:
+    """Audit result for a single entity, from live-registry discovery."""
     entity: str
-    types: List[str]
-    missing_spec: List[str]
-    unresolved: List[str]
-    errors: List[str]
+    types: List[str] = field(default_factory=list)
+    missing_spec: List[str] = field(default_factory=list)
+    unresolved: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
+# Environment setup for standalone factory imports.
+# --------------------------------------------------------------------------- #
+def _prepare_import_environment() -> None:
+    """Mirror the RAVEN driver's a-la-carte setup needed for bare imports.
+
+    Some framework modules are decorated with ``@profile`` (the line_profiler
+    builtin), which only exists when running under ``kernprof``.  The real
+    driver installs a passthrough via ``DriverUtils.setupBuiltins``; replicate
+    that here so entities such as ``Steps`` import cleanly outside a profiler.
+    Also suppress the noisy per-spec InputData warnings.
+    """
+    try:
+        from ravenframework.CustomDrivers import DriverUtils
+        DriverUtils.setupBuiltins()
+    except Exception:
+        # Fall back to the minimal builtin shim if DriverUtils is unavailable.
+        import builtins
+        if not hasattr(builtins, "profile"):
+            builtins.profile = lambda f: f
+    try:
+        from ravenframework.utils import InputData
+        InputData.SUPPRESS_INPUT_SPEC_WARNINGS = True
+    except Exception:
+        pass
+
+
+def _load_factory(module_path: str, attr: str):
+    """Import ``module_path`` and return its factory attribute."""
+    module = importlib.import_module(module_path)
+    return getattr(module, attr)
+
+
+# --------------------------------------------------------------------------- #
+# AST fallback: only used when a class cannot be resolved live.
+# --------------------------------------------------------------------------- #
+_CLASS_INFO_CACHE: Dict[Path, Dict[str, Tuple[Set[str], List[str]]]] = {}
 
 
 def _read_text(path: Path) -> str:
@@ -119,52 +189,6 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="ignore")
     except FileNotFoundError:
         return ""
-
-
-def _parse_factory_types(factory_path: Path) -> Tuple[List[Tuple[str, str]], Dict[str, str], Dict[str, str]]:
-    """Return [(type_name, class_name)], mapping of class_name->module_name, and alias->original."""
-    text = _read_text(factory_path)
-    pairs = REGISTER_RE.findall(text)
-    imports: Dict[str, str] = {}
-    aliases: Dict[str, str] = {}
-    for mod, names_blob in FROM_IMPORT_RE.findall(text):
-        names = [n.strip() for n in names_blob.split(",") if n.strip()]
-        for name in names:
-            if " as " in name:
-                original, alias = name.split(" as ", 1)
-                original = original.strip()
-                alias = alias.strip()
-                imports[alias] = mod
-                aliases[alias] = original
-                continue
-            imports[name] = mod
-    return pairs, imports, aliases
-
-
-def _find_class_file(search_root: Path, class_name: str) -> Optional[Path]:
-    for path in search_root.rglob("*.py"):
-        if path.name.startswith("_"):
-            continue
-        info = _class_info(path)
-        if class_name in info:
-            return path
-    return None
-
-
-def _class_methods(path: Path, class_name: str) -> Set[str]:
-    text = _read_text(path)
-    try:
-        tree = ast.parse(text, filename=str(path))
-    except SyntaxError:
-        return set()
-    for node in tree.body:
-        if isinstance(node, ast.ClassDef) and node.name == class_name:
-            methods = {n.name for n in node.body if isinstance(n, ast.FunctionDef)}
-            return methods
-    return set()
-
-
-_CLASS_INFO_CACHE: Dict[Path, Dict[str, Tuple[Set[str], List[str]]]] = {}
 
 
 def _class_info(path: Path) -> Dict[str, Tuple[Set[str], List[str]]]:
@@ -193,13 +217,23 @@ def _class_info(path: Path) -> Dict[str, Tuple[Set[str], List[str]]]:
     return info
 
 
-def _class_has_method(
+def _find_class_file(search_root: Path, class_name: str) -> Optional[Path]:
+    for path in search_root.rglob("*.py"):
+        if path.name.startswith("_"):
+            continue
+        if class_name in _class_info(path):
+            return path
+    return None
+
+
+def _ast_class_has_method(
     path: Path,
     class_name: str,
     method_name: str,
     search_root: Path,
     seen: Optional[Set[Tuple[Path, str]]] = None,
 ) -> bool:
+    """AST-only MRO walk; used solely as a fallback for unresolved classes."""
     info = _class_info(path)
     if class_name not in info:
         return False
@@ -214,143 +248,131 @@ def _class_has_method(
     seen.add(seen_key)
     for base in bases:
         if base in info:
-            if _class_has_method(path, base, method_name, search_root, seen):
+            if _ast_class_has_method(path, base, method_name, search_root, seen):
                 return True
             continue
         base_path = _find_class_file(search_root, base)
-        if base_path and _class_has_method(base_path, base, method_name, search_root, seen):
+        if base_path and _ast_class_has_method(base_path, base, method_name, search_root, seen):
             return True
     return False
 
-def _find_register_all_subtypes(factory_path: Path) -> List[str]:
-    text = _read_text(factory_path)
-    try:
-        tree = ast.parse(text, filename=str(factory_path))
-    except SyntaxError:
-        return []
-    base_names: List[str] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
+
+# --------------------------------------------------------------------------- #
+# Live discovery.
+# --------------------------------------------------------------------------- #
+def _live_has_spec(cls) -> bool:
+    """Authoritative coverage check: does ``cls`` (or any ancestor) define the spec?
+
+    ``hasattr`` is MRO-aware, so an inherited ``getInputSpecification`` counts as
+    coverage, which is the correct semantics for RAVEN's class hierarchy.  It is
+    ``False`` for a class that genuinely never provides the method (e.g. a
+    manual-parse class), which is exactly what the guard needs to catch.
+    """
+    return hasattr(cls, SPEC_METHOD)
+
+
+def _discover_entity_classes(factory) -> List[Tuple[str, object, Optional[str]]]:
+    """Return [(type_name, class_or_None, resolve_error_or_None)] for a factory.
+
+    Enumerates ``knownTypes`` plus any secondary ``knownAlgorithms``-style
+    registry exposed by a resolved class, deterministically sorted.
+    """
+    discovered: Dict[str, Tuple[object, Optional[str]]] = {}
+    for type_name in sorted(factory.knownTypes()):
+        try:
+            cls = factory.returnClass(type_name)
+        except Exception as exc:  # pylint: disable=broad-except
+            discovered[type_name] = (None, f"{type(exc).__name__}: {exc}")
             continue
-        if isinstance(node.func, ast.Attribute) and node.func.attr == "registerAllSubtypes":
-            if node.args and isinstance(node.args[0], ast.Name):
-                base_names.append(node.args[0].id)
-    return base_names
-
-
-def _find_subclasses(search_paths: Iterable[Path], base_names: Set[str]) -> Set[str]:
-    class_bases: Dict[str, Set[str]] = {}
-    for path in search_paths:
-        if path.is_dir():
-            paths = [p for p in path.rglob("*.py") if p.is_file()]
-        else:
-            paths = [path]
-        for file_path in paths:
-            info = _class_info(file_path)
-            for class_name, (_, bases) in info.items():
-                class_bases.setdefault(class_name, set()).update(bases)
-    initial = set(base_names)
-    added = True
-    while added:
-        added = False
-        for class_name, bases in class_bases.items():
-            if class_name in base_names:
+        discovered[type_name] = (cls, None)
+        # Fold in any secondary registry (e.g. registerAlgorithm sub-variants).
+        for attr in SUBREGISTRY_ATTRS:
+            subreg = getattr(cls, attr, None)
+            if not isinstance(subreg, dict):
                 continue
-            if any(base in base_names for base in bases):
-                base_names.add(class_name)
-                added = True
-    return base_names - initial
+            for sub_name, sub_cls in subreg.items():
+                if sub_name in discovered:
+                    continue
+                discovered[sub_name] = (sub_cls, None)
+    return [(name, discovered[name][0], discovered[name][1]) for name in sorted(discovered)]
 
 
-def _audit_entity(entity: str) -> EntityAudit:
-    factory_path = ENTITY_FACTORIES.get(entity)
-    if factory_path is None or not factory_path.exists():
-        return EntityAudit(entity, [], [], [], ["factory not found"])
-    pairs, imports, aliases = _parse_factory_types(factory_path)
-    register_all = _find_register_all_subtypes(factory_path)
-    # If no explicit registerType calls, fall back to imported classes as a weak proxy.
-    if not pairs and not register_all:
-        for cls_name, mod in imports.items():
-            pairs.append((cls_name, cls_name))
-    if register_all:
-        base_names: Set[str] = set()
-        for base in register_all:
-            alias_target = aliases.get(base)
-            if alias_target:
-                base_names.add(alias_target)
-            else:
-                base_names.add(base)
-        if factory_path.name == "Factory.py":
-            search_root = factory_path.parent
-        else:
-            search_root = factory_path
-        subtypes = _find_subclasses([search_root], base_names)
-        for subtype in sorted(subtypes):
-            pairs.append((subtype, subtype))
-    types: List[str] = []
-    missing_spec: List[str] = []
-    unresolved: List[str] = []
+def _audit_entity(entity: str, module_path: str, attr: str) -> EntityAudit:
+    audit = EntityAudit(entity)
+    try:
+        factory = _load_factory(module_path, attr)
+    except Exception as exc:  # pylint: disable=broad-except
+        audit.errors.append(f"failed to import factory: {type(exc).__name__}: {exc}")
+        return audit
+
+    search_root = REPO_ROOT / "ravenframework"
+    types: Set[str] = set()
+    missing_spec: Set[str] = set()
+    unresolved: Set[str] = set()
     errors: List[str] = []
 
-    # Set the search root to the entity folder or ravenframework.
-    if factory_path.name == "Factory.py":
-        search_root = factory_path.parent
-    else:
-        search_root = REPO_ROOT / "ravenframework"
-
-    for type_name, class_name in pairs:
-        if type_name not in types:
-            types.append(type_name)
-        module_name = imports.get(class_name)
-        module_path: Optional[Path] = None
-        if module_name:
-            module_path = factory_path.parent / f"{module_name}.py"
-        if module_path is None or not module_path.exists():
-            module_path = _find_class_file(search_root, class_name)
-        if module_path is not None:
-            if class_name not in _class_info(module_path):
-                module_path = _find_class_file(search_root, class_name)
-        if module_path is None:
-            unresolved.append(type_name)
+    for type_name, cls, resolve_err in _discover_entity_classes(factory):
+        types.add(type_name)
+        if cls is None:
+            # Could not resolve the class live; try an AST fallback by name.
+            unresolved.add(type_name)
+            errors.append(f"resolve {type_name}: {resolve_err}")
+            ast_path = _find_class_file(search_root, type_name)
+            if ast_path is not None and not _ast_class_has_method(
+                ast_path, type_name, SPEC_METHOD, search_root
+            ):
+                missing_spec.add(type_name)
             continue
-        if not _class_has_method(module_path, class_name, "getInputSpecification", search_root):
-            missing_spec.append(type_name)
-    return EntityAudit(entity, sorted(types), sorted(missing_spec), sorted(set(unresolved)), errors)
+        if not _live_has_spec(cls):
+            missing_spec.add(type_name)
+
+    audit.types = sorted(types)
+    audit.missing_spec = sorted(missing_spec)
+    audit.unresolved = sorted(unresolved)
+    audit.errors = sorted(errors)
+    return audit
 
 
+# --------------------------------------------------------------------------- #
+# Manual-parsing scan (human-report only; excluded from the portable baseline).
+# --------------------------------------------------------------------------- #
 def _scan_manual_parsing(paths: Iterable[Path]) -> Dict[str, List[str]]:
-    """Scan for XML parsing hints in classes missing getInputSpecification."""
+    """Scan for XML parsing hints in classes missing getInputSpecification.
+
+    Keyed by repo-relative path so the human report is reproducible across
+    checkouts; this map is intentionally NOT part of the regression baseline.
+    """
     result: Dict[str, List[str]] = {}
     for path in paths:
         text = _read_text(path)
-        if not text:
-            continue
-        if not any(hint in text for hint in XML_PARSE_HINTS):
+        if not text or not any(hint in text for hint in XML_PARSE_HINTS):
             continue
         try:
             tree = ast.parse(text, filename=str(path))
         except SyntaxError:
             continue
+        try:
+            rel = str(path.relative_to(REPO_ROOT))
+        except ValueError:
+            rel = str(path)
         for node in tree.body:
             if not isinstance(node, ast.ClassDef):
                 continue
             methods = {n.name for n in node.body if isinstance(n, ast.FunctionDef)}
-            if "getInputSpecification" in methods:
+            if SPEC_METHOD in methods:
                 continue
-            has_hint = (
-                "XMLread" in methods
-                or "_readMoreXML" in methods
-                or "handleInput" in methods
-            )
-            if has_hint:
-                result.setdefault(str(path), []).append(node.name)
-    return result
+            if "XMLread" in methods or "_readMoreXML" in methods or "handleInput" in methods:
+                result.setdefault(rel, []).append(node.name)
+    return {key: sorted(val) for key, val in sorted(result.items())}
 
 
 def _collect_py_files(root: Path) -> List[Path]:
-    return [p for p in root.rglob("*.py") if p.is_file()]
+    return sorted(p for p in root.rglob("*.py") if p.is_file())
 
 
+# --------------------------------------------------------------------------- #
+# XSD alignment.
+# --------------------------------------------------------------------------- #
 def _xsd_type_names(xsd_path: Path, root_type: Optional[str] = None) -> Set[str]:
     if not xsd_path.exists():
         return set()
@@ -369,7 +391,7 @@ def _xsd_type_names(xsd_path: Path, root_type: Optional[str] = None) -> Set[str]
         return names
     for ctype in root.iter():
         if ctype.tag.endswith("complexType") and ctype.attrib.get("name") == root_type:
-            names: Set[str] = set()
+            names = set()
             for elem in ctype.iter():
                 if elem.tag.endswith("element"):
                     name = elem.attrib.get("name")
@@ -377,6 +399,7 @@ def _xsd_type_names(xsd_path: Path, root_type: Optional[str] = None) -> Set[str]
                         names.add(name)
             return names
     return set()
+
 
 def _xsd_root_type(xsd_path: Path, entity: str, fallback: Optional[str]) -> Optional[str]:
     if not xsd_path.exists():
@@ -391,6 +414,7 @@ def _xsd_root_type(xsd_path: Path, entity: str, fallback: Optional[str]) -> Opti
             return elem.attrib.get("type", fallback)
     return fallback
 
+
 def _resolve_xsd_path(entity: str) -> Optional[Path]:
     generated = GENERATED_XSD_DIR / f"{entity}.xsd"
     if generated.exists():
@@ -398,18 +422,7 @@ def _resolve_xsd_path(entity: str) -> Optional[Path]:
     return XSD_FILES.get(entity)
 
 
-def run_audit() -> Dict[str, object]:
-    entities: List[EntityAudit] = []
-    for entity in sorted(ENTITY_FACTORIES.keys()):
-        entities.append(_audit_entity(entity))
-
-    # Manual XML parsing scan
-    raven_files = _collect_py_files(REPO_ROOT / "ravenframework")
-    plugin_files = _collect_py_files(REPO_ROOT / "plugins")
-    manual_raven = _scan_manual_parsing(raven_files)
-    manual_plugins = _scan_manual_parsing(plugin_files)
-
-    # XSD vs factory type check (approximate)
+def _compute_xsd_diff(entities: List[EntityAudit]) -> Dict[str, Dict[str, List[str]]]:
     xsd_diff: Dict[str, Dict[str, List[str]]] = {}
     for audit in entities:
         xsd_path = _resolve_xsd_path(audit.entity)
@@ -417,9 +430,9 @@ def run_audit() -> Dict[str, object]:
             continue
         root_type = _xsd_root_type(xsd_path, audit.entity, XSD_ROOT_TYPES.get(audit.entity))
         xsd_names = _xsd_type_names(xsd_path, root_type=root_type)
-        type_names = set(audit.types)
         if not xsd_names:
             continue
+        type_names = set(audit.types)
         if audit.entity == "Steps":
             type_names.discard("Step")
         if audit.entity == "Models":
@@ -437,6 +450,28 @@ def run_audit() -> Dict[str, object]:
             "missing_in_xsd": missing_in_xsd,
             "extra_in_xsd": extra_in_xsd,
         }
+    return xsd_diff
+
+
+# --------------------------------------------------------------------------- #
+# Public API.
+# --------------------------------------------------------------------------- #
+def run_audit() -> Dict[str, object]:
+    """Full human-oriented audit via live registry introspection."""
+    _prepare_import_environment()
+
+    entities: List[EntityAudit] = [
+        _audit_entity(entity, module_path, attr)
+        for entity, (module_path, attr) in sorted(ENTITY_FACTORIES.items())
+    ]
+
+    raven_files = _collect_py_files(REPO_ROOT / "ravenframework")
+    plugins_root = REPO_ROOT / "plugins"
+    plugin_files = _collect_py_files(plugins_root) if plugins_root.exists() else []
+    manual_raven = _scan_manual_parsing(raven_files)
+    manual_plugins = _scan_manual_parsing(plugin_files)
+
+    xsd_diff = _compute_xsd_diff(entities)
 
     return {
         "entities": [audit.__dict__ for audit in entities],
@@ -448,6 +483,60 @@ def run_audit() -> Dict[str, object]:
     }
 
 
+def coverage_facts(audit: Optional[Dict[str, object]] = None) -> Dict[str, object]:
+    """Minimal, portable regression baseline of coverage FACTS only.
+
+    Per entity, keeps exactly the stable facts a guardrail should defend:
+      * ``missing_spec``  -- registered types with no getInputSpecification
+      * ``errors``        -- factory import / class resolve failures
+      * ``extra_in_xsd``  -- types present in the XSD but no longer registered
+
+    Deliberately excludes:
+      * the volatile ``types`` rosters and the manual-parsing path map, and
+      * ``missing_in_xsd`` -- a *newly added* well-formed type is, by nature,
+        transiently absent from the hand-written XSD until it is regenerated,
+        so freezing ``missing_in_xsd`` would make benign additions fail the
+        test. ``missing_in_xsd`` is still reported by ``run_audit`` for humans;
+        it is just not a frozen regression fact. (``extra_in_xsd`` is the
+        non-churning direction: it only grows when a registered type is removed
+        or the schema references a phantom type -- a real drift.)
+
+    The net effect:
+      * adding a well-formed entity (new type WITH a spec) -> ``missing_spec``
+        empty and ``extra_in_xsd`` unchanged -> the baseline does NOT change;
+      * removing a spec / introducing a manual-parse or unresolvable class ->
+        ``missing_spec`` (or ``errors``) grows -> the test FAILS;
+      * deleting a registered type while leaving it in the XSD, or an entity
+        that no longer imports -> ``extra_in_xsd`` / ``errors`` grows -> FAILS.
+
+    The result is deterministic (sorted keys/lists) and checkout-independent.
+    """
+    if audit is None:
+        audit = run_audit()
+    entities = audit.get("entities", [])  # type: ignore[union-attr]
+    xsd_diff = audit.get("xsd_diff", {})  # type: ignore[union-attr]
+
+    coverage: Dict[str, Dict[str, List[str]]] = {}
+    for ent in entities:
+        name = ent["entity"]
+        coverage[name] = {
+            "missing_spec": sorted(ent.get("missing_spec", [])),
+            "errors": sorted(ent.get("errors", [])),
+        }
+    norm_xsd = {
+        entity: {"extra_in_xsd": sorted(diff.get("extra_in_xsd", []))}
+        for entity, diff in xsd_diff.items()
+    }
+    return {
+        "schema_version": 1,
+        "coverage": coverage,
+        "xsd_diff": {entity: norm_xsd[entity] for entity in sorted(norm_xsd)},
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Text report.
+# --------------------------------------------------------------------------- #
 def _print_report(data: Dict[str, object]) -> None:
     entities = data.get("entities", [])
     print("InputData Spec Coverage Audit")
@@ -456,9 +545,14 @@ def _print_report(data: Dict[str, object]) -> None:
         entity = ent["entity"]
         missing = ent["missing_spec"]
         unresolved = ent["unresolved"]
-        if not missing and not unresolved:
+        errors = ent.get("errors", [])
+        if not missing and not unresolved and not errors:
             continue
         print(f"\n[{entity}]")
+        if errors:
+            print(f"  Errors: {len(errors)}")
+            for name in errors[:50]:
+                print(f"    - {name}")
         if missing:
             print(f"  Missing getInputSpecification: {len(missing)}")
             for name in missing[:50]:
@@ -512,8 +606,13 @@ def _print_report(data: Dict[str, object]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--json", dest="json_path", help="Write JSON report to path")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--json", dest="json_path", help="Write full audit JSON report to path")
+    parser.add_argument(
+        "--baseline-json",
+        dest="baseline_path",
+        help="Write the minimal coverage-facts regression baseline to path",
+    )
     parser.add_argument("--no-print", action="store_true", help="Skip text report")
     args = parser.parse_args()
 
@@ -521,8 +620,11 @@ def main() -> None:
     if not args.no_print:
         _print_report(data)
     if args.json_path:
-        out = Path(args.json_path)
-        out.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        Path(args.json_path).write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+    if args.baseline_path:
+        Path(args.baseline_path).write_text(
+            json.dumps(coverage_facts(data), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
 
 
 if __name__ == "__main__":
