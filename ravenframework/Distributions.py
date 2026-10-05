@@ -399,6 +399,15 @@ class Distribution(BaseEntity, InputDataUser):
     """
     pass
 
+  def getSampleProbability(self, value):
+    """
+      Return the probability associated with a sampled value.
+      By default, this is the distribution pdf/pmf at the sampled value.
+      @ In, value, float/string, sampled value
+      @ Out, probability, float, probability associated to the sampled value
+    """
+    return self.pdf(value)
+
 class BoostDistribution(Distribution):
   """
     Base distribution class based on boost
@@ -520,15 +529,6 @@ class BoostDistribution(Distribution):
     else:
       rvsValue = self.selectedPpf(random(),discardedElems)
     return rvsValue
-
-  def getSampleProbability(self, value):
-    """
-      Return the probability associated with a sampled value.
-      By default, this is the distribution pdf/pmf at the sampled value.
-      @ In, value, float/string, sampled value
-      @ Out, probability, float, probability associated to the sampled value
-    """
-    return self.pdf(value)
 
 class Uniform(BoostDistribution):
   """
