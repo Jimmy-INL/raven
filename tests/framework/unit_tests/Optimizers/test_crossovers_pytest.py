@@ -121,3 +121,80 @@ def test_two_points_crossover_rejects_short_chromosomes(simple_parents):
 if __name__ == "__main__":
   from pytest_runner import run_module
   run_module(__file__)
+
+
+@pytest.fixture
+def permutation_parents():
+  parents = xr.DataArray(
+    np.array([[1, 2, 3, 4, 5, 6, 7, 8],
+              [8, 6, 4, 2, 7, 5, 3, 1]], dtype=float),
+    dims=['chromosome', 'Gene'],
+    coords={'chromosome': np.arange(2), 'Gene': ['x{}'.format(i) for i in range(1, 9)]},
+  )
+  return parents
+
+
+def test_order_crossover_method_matches_davis_example():
+  parent1 = np.array([1, 2, 3, 4, 5, 6, 7, 8])
+  parent2 = np.array([8, 6, 4, 2, 7, 5, 3, 1])
+  np.testing.assert_array_equal(crossovers.orderCrossoverMethod(parent1, parent2, 2, 5),
+                                [2, 7, 3, 4, 5, 1, 8, 6])
+  np.testing.assert_array_equal(crossovers.orderCrossoverMethod(parent2, parent1, 2, 5),
+                                [3, 5, 4, 2, 7, 6, 8, 1])
+
+
+def test_order_crossover_method_children_are_permutations_keeping_the_slice():
+  rng = np.random.RandomState(0)
+  for _ in range(500):
+    nGenes = rng.randint(2, 13)
+    parent1 = rng.permutation(nGenes)
+    parent2 = rng.permutation(nGenes)
+    locL, locU = sorted(rng.choice(nGenes + 1, size=2, replace=False))
+    child = crossovers.orderCrossoverMethod(parent1, parent2, locL, locU)
+    assert sorted(child.tolist()) == list(range(nGenes))
+    np.testing.assert_array_equal(child[locL:locU], parent1[locL:locU])
+
+
+def test_order_crossover_method_full_slice_copies_parent():
+  parent1 = np.array([3, 1, 2, 4])
+  parent2 = np.array([4, 3, 2, 1])
+  np.testing.assert_array_equal(crossovers.orderCrossoverMethod(parent1, parent2, 0, 4), parent1)
+
+
+def test_order_crossover_uses_provided_points(permutation_parents, monkeypatch):
+  monkeypatch.setattr(randomUtils, 'random', lambda dim=1, samples=1, keepMatrix=False, engine=None: 0.0)
+  children = crossovers.orderCrossover(permutation_parents, crossoverProb=0.9, points=[2, 5],
+                                       variables=list(permutation_parents.coords['Gene'].values))
+  np.testing.assert_array_equal(children.values, [[2, 7, 3, 4, 5, 1, 8, 6],
+                                                  [3, 5, 4, 2, 7, 6, 8, 1]])
+  assert list(children.coords['Gene'].values) == list(permutation_parents.coords['Gene'].values)
+
+
+def test_order_crossover_copies_parents_when_not_recombined(permutation_parents, monkeypatch):
+  monkeypatch.setattr(randomUtils, 'random', lambda dim=1, samples=1, keepMatrix=False, engine=None: 1.0)
+  children = crossovers.orderCrossover(permutation_parents, crossoverProb=0.5, points=[2, 5],
+                                       variables=list(permutation_parents.coords['Gene'].values))
+  np.testing.assert_array_equal(children.values, permutation_parents.values)
+
+
+def test_order_crossover_sampled_points_give_permutations(monkeypatch):
+  randomUtils.randomSeed(42)
+  data = np.array([np.random.RandomState(seed).permutation(10) + 1 for seed in range(4)], dtype=float)
+  parents = xr.DataArray(data, dims=['chromosome', 'Gene'],
+                         coords={'chromosome': np.arange(4), 'Gene': ['x{}'.format(i) for i in range(1, 11)]})
+  children = crossovers.orderCrossover(parents, crossoverProb=1.0, points=None,
+                                       variables=list(parents.coords['Gene'].values))
+  assert children.shape == (12, 10)
+  for child in children.values:
+    assert sorted(child.astype(int).tolist()) == list(range(1, 11))
+
+
+@pytest.mark.parametrize('points', [[3], [5, 2], [0, 9], [-1, 4]])
+def test_order_crossover_rejects_bad_points(permutation_parents, points):
+  with pytest.raises(ValueError):
+    crossovers.orderCrossover(permutation_parents, crossoverProb=1.0, points=points,
+                              variables=list(permutation_parents.coords['Gene'].values))
+
+
+def test_order_crossover_is_registered():
+  assert crossovers.returnInstance(None, 'orderCrossover') is crossovers.orderCrossover

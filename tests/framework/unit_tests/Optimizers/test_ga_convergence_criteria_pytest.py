@@ -190,3 +190,20 @@ def test_no_convergence_hypervolume():
 if __name__ == "__main__":
   from pytest_runner import run_module
   run_module(__file__)
+
+
+def test_objective_criterion_default_is_one_target_per_objective():
+  # Without a <convergence> node the GA falls back to the <objective> criterion. Its default must be
+  # a list with one target per objective, as <convergence><objective> would give: a bare float made
+  # every multi-objective run without <convergence> fail with "'float' object is not subscriptable"
+  # in _checkConvObjective from the second generation on.
+  optimizer = _makeOptimizer(['lengthA', 'lengthB'])
+  optimizer._objMult = {'lengthA': 1, 'lengthB': 1}
+  optimizer._convergenceCriteria = {}
+  optimizer._setDefaultConvergence()
+  assert optimizer._convergenceCriteria['objective'] == [1e-6, 1e-6]
+  optimizer._optPointHistory = {0: [None, None]}
+  new = {'lengthA': np.array([254.3848, 300.0]), 'lengthB': np.array([369.6443, 290.0])}
+  assert not optimizer._checkConvObjective(0, new=new, old=None)
+  new = {'lengthA': np.array([254.3848, 1e-6]), 'lengthB': np.array([369.6443, 1e-6])}
+  assert optimizer._checkConvObjective(0, new=new, old=None)

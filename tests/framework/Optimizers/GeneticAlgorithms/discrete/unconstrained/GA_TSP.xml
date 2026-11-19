@@ -1,0 +1,179 @@
+<?xml version="1.0" ?>
+<Simulation verbosity="silent">
+  <TestInfo>
+    <name>framework/Optimizers/GeneticAlgorithms.GA_TSP</name>
+    <author>MohammadAbdo</author>
+    <created>2026-11-18</created>
+    <classesTested>GeneticAlgorithm, crossovers.orderCrossover</classesTested>
+    <description>
+      The traveling salesman problem on 10 cities, solved with the single-objective GeneticAlgorithm.
+      x1..x10 are the city at each stop of a closed tour; they share one withoutReplacement
+      UniformDiscrete distribution, so every chromosome is a permutation of the cities. The
+      objective lengthA is the tour length on map A, minimized. orderCrossover (OX) and
+      inversionMutator both keep a chromosome a permutation, so no repair is needed.
+      The exact optimum is lengthA = 254.3848 (tour 1-8-2-4-9-7-6-3-5-10).
+    </description>
+    <analytic>
+      travelingSalesman.py documents the exact solutions, found by enumerating all 181440 distinct
+      tours of the 10 cities.
+    </analytic>
+  </TestInfo>
+
+  <RunInfo>
+    <WorkingDir>TSP</WorkingDir>
+    <Sequence>optimize, print</Sequence>
+    <batchSize>1</batchSize>
+  </RunInfo>
+
+  <Steps>
+    <MultiRun name="optimize" re-seeding="2286">
+      <Input class="DataObjects" type="PointSet">placeholder</Input>
+      <Model class="Models" type="ExternalModel">tsp</Model>
+      <Optimizer class="Optimizers" type="GeneticAlgorithm">GAopt</Optimizer>
+      <SolutionExport class="DataObjects" type="PointSet">opt_export</SolutionExport>
+      <Output class="DataObjects" type="PointSet">optOut</Output>
+    </MultiRun>
+    <IOStep name="print">
+      <Input class="DataObjects" type="PointSet">opt_export</Input>
+      <Output class="OutStreams" type="Print">opt_export</Output>
+    </IOStep>
+  </Steps>
+
+  <Distributions>
+    <!-- one shared withoutReplacement distribution: x1..x10 are a permutation of the 10 cities -->
+    <UniformDiscrete name="cityDist">
+      <lowerBound>1</lowerBound>
+      <upperBound>10</upperBound>
+      <strategy>withoutReplacement</strategy>
+    </UniformDiscrete>
+  </Distributions>
+
+  <Optimizers>
+    <GeneticAlgorithm name="GAopt">
+      <samplerInit>
+        <limit>40</limit>
+        <initialSeed>42</initialSeed>
+        <writeSteps>every</writeSteps>
+        <type>min</type>
+      </samplerInit>
+      <GAparams>
+        <populationSize>30</populationSize>
+        <parentSelection>tournamentSelection</parentSelection>
+        <reproduction>
+          <crossover type="orderCrossover">
+            <crossoverProb>0.9</crossoverProb>
+          </crossover>
+          <mutation type="inversionMutator">
+            <mutationProb>0.3</mutationProb>
+          </mutation>
+        </reproduction>
+        <fitness type="invLinear">
+          <a>1.0</a>
+          <b>1.0</b>
+        </fitness>
+        <survivorSelection>fitnessBased</survivorSelection>
+      </GAparams>
+      <convergence>
+        <objective>254.3849</objective>
+      </convergence>
+      <variable name="x1">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x2">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x3">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x4">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x5">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x6">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x7">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x8">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x9">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x10">
+        <distribution>cityDist</distribution>
+      </variable>
+      <objective>lengthA</objective>
+      <TargetEvaluation class="DataObjects" type="PointSet">optOut</TargetEvaluation>
+      <Sampler class="Samplers" type="MonteCarlo">MC_samp</Sampler>
+    </GeneticAlgorithm>
+  </Optimizers>
+
+  <Samplers>
+    <MonteCarlo name="MC_samp">
+      <samplerInit>
+        <limit>30</limit>
+        <initialSeed>20021986</initialSeed>
+      </samplerInit>
+      <variable name="x1">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x2">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x3">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x4">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x5">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x6">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x7">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x8">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x9">
+        <distribution>cityDist</distribution>
+      </variable>
+      <variable name="x10">
+        <distribution>cityDist</distribution>
+      </variable>
+    </MonteCarlo>
+  </Samplers>
+
+  <Models>
+    <ExternalModel ModuleToLoad="../../../../../AnalyticModels/optimizing/travelingSalesman.py" name="tsp" subType="">
+      <variables>x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,lengthA,lengthB,lengthC</variables>
+    </ExternalModel>
+  </Models>
+
+  <DataObjects>
+    <PointSet name="placeholder"/>
+    <PointSet name="optOut">
+      <Input>x1,x2,x3,x4,x5,x6,x7,x8,x9,x10</Input>
+      <Output>lengthA</Output>
+    </PointSet>
+    <PointSet name="opt_export">
+      <Input>trajID</Input>
+      <Output>x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,lengthA,age,batchId,fitness,iteration,accepted,conv_objective</Output>
+    </PointSet>
+  </DataObjects>
+
+  <OutStreams>
+    <Print name="opt_export">
+      <type>csv</type>
+      <source>opt_export</source>
+      <clusterLabel>trajID</clusterLabel>
+    </Print>
+  </OutStreams>
+</Simulation>

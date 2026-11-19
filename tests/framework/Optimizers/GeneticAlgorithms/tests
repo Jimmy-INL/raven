@@ -1245,4 +1245,24 @@
       output = 'discrete/constrained/MinwoRepMultiObjectiveConvHypervolume/1-population.png'
     [../]
   [../]
+
+  [./GA_TSP]
+    type = 'RavenFramework'
+    input = 'discrete/unconstrained/GA_TSP.xml'
+    [./csv]
+      type = UnorderedCSV
+      output = 'discrete/unconstrained/TSP/opt_export_0.csv'
+      rel_err = 1e-6
+    [../]
+  [../]
+
+  [./NSGA-II_TSP]
+    type = 'RavenFramework'
+    input = 'discrete/unconstrained/NSGA2_TSP.xml'
+    [./csv]
+      type = UnorderedCSV
+      output = 'discrete/unconstrained/NSGA2_TSP/opt_export_0.csv'
+      rel_err = 1e-6
+    [../]
+  [../]
 []

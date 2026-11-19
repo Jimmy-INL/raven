@@ -230,11 +230,65 @@ def sbxCrossover(parents, **kwargs):
   return children
 
 
+def orderCrossover(parents, **kwargs):
+  """
+    Order crossover (OX, Davis 1985) for permutation chromosomes, e.g. a tour of the traveling
+    salesman problem, where every gene value appears exactly once. For each pair of parents a
+    slice [locL, locU) is chosen. Child 1 keeps parent 1's slice in place; its other positions are
+    filled with parent 2's values that are not in the slice, in the order they appear in parent 2
+    starting just after the slice and wrapping around. Child 2 is built the same way with the
+    parents' roles swapped. A child of two permutations is therefore always a permutation, and the
+    relative order of the genes is inherited, which the gene-swapping crossovers do not preserve.
+    E.g. parent1 = [1,2,3,4,5,6,7,8], parent2 = [8,6,4,2,7,5,3,1], locL=2, locU=5:
+         child1  = [2,7,3,4,5,1,8,6], child2 = [3,5,4,2,7,6,8,1]
+    @ In, parents, xr.DataArray, parents involved in the mating process (nParents x nGenes).
+    @ In, kwargs, dict, dictionary of parameters for this crossover method:
+          crossoverProb, float, probability that a pair of parents is recombined; otherwise the
+            children are copies of the parents. Default 1.0 if None.
+          points, list(int), optional, the two slice bounds [locL, locU] (0 <= locL < locU <= nGenes);
+            sampled for every pair when not given.
+          variables, list, variable names.
+    @ Out, children, xr.DataArray, children resulting from the crossover (2*comb(nParents,2) x nGenes).
+  """
+  nParents, nGenes = np.shape(parents)
+  if nGenes < 2:
+    raise ValueError('Order crossover needs a chromosome of at least 2 genes!')
+  crossoverProb = kwargs.get('crossoverProb', None)
+  if crossoverProb is None:
+    crossoverProb = 1.0
+  points = kwargs.get('points', None)
+  if points is not None:
+    if len(points) != 2 or not 0 <= points[0] < points[1] <= nGenes:
+      raise ValueError(f'Order crossover needs two points 0 <= locL < locU <= {nGenes}; got {points}')
+  nChildren = int(2 * comb(nParents, 2))
+  children = xr.DataArray(np.zeros((nChildren, nGenes)),
+                          dims=['chromosome', 'Gene'],
+                          coords={'chromosome': np.arange(nChildren),
+                                  'Gene': parents.coords['Gene'].values})
+  index = 0
+  for pair in combinations(parents, 2):
+    parent1 = np.array(pair[0].values)
+    parent2 = np.array(pair[1].values)
+    if float(randomUtils.random(dim=1, samples=1)) <= crossoverProb:
+      if points is None:
+        locL, locU = sorted(randomUtils.randomChoice(list(range(nGenes + 1)), size=2, replace=False, engine=None))
+      else:
+        locL, locU = points
+      children[index] = orderCrossoverMethod(parent1, parent2, locL, locU)
+      children[index + 1] = orderCrossoverMethod(parent2, parent1, locL, locU)
+    else:
+      children[index] = parent1
+      children[index + 1] = parent2
+    index += 2
+  return children
+
+
 __crossovers = {}
 __crossovers['onePointCrossover']  = onePointCrossover
 __crossovers['twoPointsCrossover'] = twoPointsCrossover
 __crossovers['uniformCrossover']   = uniformCrossover
 __crossovers['sbxCrossover']       = sbxCrossover
+__crossovers['orderCrossover']     = orderCrossover
 
 
 def registerCrossover(name, func):
@@ -306,3 +360,24 @@ def uniformCrossoverMethod(parent1,parent2,crossoverProb):
       children2[pos] = parent2[pos]
 
   return children1,children2
+
+def orderCrossoverMethod(parent1, parent2, locL, locU):
+  """
+    Build one order-crossover (OX) child from two permutations: keep parent1[locL:locU] in place
+    and fill the other positions, starting at locU and wrapping around, with the values of parent2
+    that are not in that slice, taken in parent2's order starting at locU.
+    @ In, parent1, np.array, the parent whose slice is kept
+    @ In, parent2, np.array, the parent that gives the order of the remaining values
+    @ In, locL, int, first position of the slice (inclusive)
+    @ In, locU, int, end of the slice (exclusive)
+    @ Out, child, np.array, the child permutation
+  """
+  nGenes = len(parent1)
+  child = np.array(parent1, copy=True)
+  kept = set(parent1[locL:locU].tolist())
+  donorOrder = [parent2[(locU + k) % nGenes] for k in range(nGenes)]
+  fill = [value for value in donorOrder if value not in kept]
+  openPositions = [(locU + k) % nGenes for k in range(nGenes - (locU - locL))]
+  for position, value in zip(openPositions, fill):
+    child[position] = value
+  return child

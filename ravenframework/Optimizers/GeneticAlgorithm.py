@@ -451,6 +451,7 @@ class GeneticAlgorithm(RavenSampled):
                     \item \textit{twoPointsCrossover} - It selects two random crossover points along the chromosome of parent individuals and swapping the genetic material beyond that point to create offspring.
                     \item \textit{uniformCrossover} - It randomly selects genes from two parent chromosomes with equal probability, creating offspring by exchanging genes at corresponding positions.
                     \item \textit{sbxCrossover} - Simulated Binary Crossover (Deb \& Agrawal, 1995) for real-valued variables; produces offspring distributed around the parents within the variable bounds, controlled by a distribution index. Recommended for continuous multi-objective problems.
+                    \item \textit{orderCrossover} - Order crossover (OX, Davis 1985) for permutation chromosomes, such as a traveling-salesman tour whose variables share a \xmlString{withoutReplacement} distribution. Each child keeps a random slice of one parent in place and fills the remaining positions with the other parent's values in the order they appear there, so the children are always permutations and inherit the parents' relative gene order. \xmlNode{points}, if given, are the two slice bounds.
                   \end{itemize}""")
     crossover.addParam("type",
                        InputTypes.makeEnumType('crossover','crossoverType',list(_crossovers)),
@@ -773,10 +774,20 @@ class GeneticAlgorithm(RavenSampled):
           self._convergenceCriteria[sub.name] = sub.value
     if not self._convergenceCriteria:
       self.raiseAWarning('No convergence criteria given; using defaults.')
-      self._convergenceCriteria['objective'] = 1e-6
+      self._setDefaultConvergence()
     if self._requiredPersistence is None:
       self.raiseADebug('No persistence given; setting to 1.')
       self._requiredPersistence = 1
+
+  def _setDefaultConvergence(self):
+    """
+      Use the default convergence criterion when the input gives none: the <objective> criterion with
+      a target of 1e-6 for every objective. It is a list with one target per objective, as
+      <convergence><objective> (a FloatListType) gives, because _checkConvObjective indexes it.
+      @ In, None
+      @ Out, None
+    """
+    self._convergenceCriteria['objective'] = [1e-6] * len(self._objectiveVar)
 
   def _recordSampledPopulation(self, offspring, offspringFitVals):
     """
